@@ -27,25 +27,25 @@
 
 export const storeFile = [
   {
-    title: 'Promote Your Listing',
+    title: 'Invite Your Network',
     description:
-      'Your job is to invite buyer agents to increase exposure and approve the marketing campaign.',
+      'Recruit local agents and office colleagues to amplify your reach and sell your listing.',
     icon: 'User',
     color: '#9F57CB',
     shadowColor: '#9F57CB80',
   },
   {
-    title: 'Approve Assets',
+    title: 'Customize Your Content',
     description:
-      'Our system will generate post templates, hooks, descriptions and action items to get buyers.',
+      'We generate templates, videos, hooks, and unique descriptions to achieve the best results.',
     icon: 'UpArrow',
     color: '#597AEA',
     shadowColor: '#597AEA80',
   },
   {
-    title: 'Your Media Network',
+    title: 'Automate Your Growth',
     description:
-      'Blanket your local market with scheduled posts on every social platform and track the results.',
+      'Sync your socials to promote your listing on every platform. Track your viral results.',
     icon: 'Hyperlink',
     color: '#57CBAA',
     shadowColor: '#57CBAA80',
