@@ -30,24 +30,24 @@ export const storeFile = [
     title: 'Invite Your Network',
     description:
       'Recruit local agents and office colleagues to amplify your reach and sell your listing.',
-    icon: 'User',
-    color: '#9F57CB',
-    shadowColor: '#9F57CB80',
+icon: 'Hyperlink',
+    color: '#57CBAA',
+    shadowColor: '#57CBAA80',
   },
   {
     title: 'Customize Your Content',
     description:
       'We generate templates, videos, hooks, and unique descriptions to achieve the best results.',
-    icon: 'UpArrow',
-    color: '#597AEA',
-    shadowColor: '#597AEA80',
+    icon: 'User',
+    color: '#9F57CB',
+    shadowColor: '#9F57CB80',
   },
   {
     title: 'Automate Your Growth',
     description:
       'Sync your socials to promote your listing on every platform. Track your viral results.',
-    icon: 'Hyperlink',
-    color: '#57CBAA',
-    shadowColor: '#57CBAA80',
+    icon: 'UpArrow',
+    color: '#597AEA',
+    shadowColor: '#597AEA80',
   },
 ];
