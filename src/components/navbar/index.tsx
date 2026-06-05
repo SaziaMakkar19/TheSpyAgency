@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { globalStyles } from '@/app/styles.global';
 import {NavbarProps, NavItem, navbarStyles} from './navbar.style';
+import { useRouter } from "next/navigation";
 
 const defaultNavItems: NavItem[] = [
   { label: 'Agents', href: '#' },
@@ -14,6 +15,8 @@ const defaultNavItems: NavItem[] = [
 
 export const Navbar: React.FC<NavbarProps> = ({ initialItems = defaultNavItems }) => {
   const [isOpen, setIsOpen] = useState<boolean>(false);
+    const router = useRouter();
+
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -47,7 +50,7 @@ export const Navbar: React.FC<NavbarProps> = ({ initialItems = defaultNavItems }
           </nav>
 
           {/* Desktop Login Button */}
-          <button className={navbarStyles.desktopLoginBtn}>
+          <button onClick={() => router.push("/login")} className={navbarStyles.desktopLoginBtn}>
             <svg className={`w-[18px] h-[18px] ${globalStyles.iconStroke2}`} viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
             </svg>
@@ -101,7 +104,7 @@ export const Navbar: React.FC<NavbarProps> = ({ initialItems = defaultNavItems }
 
           {/* Drawer Login Button */}
           <div className="pt-6 border-t border-gray-100">
-            <button className={navbarStyles.mobileLoginBtn}>
+            <button onClick={() => router.push("/login")} className={navbarStyles.mobileLoginBtn}>
               <svg className={`w-4 h-4 ${globalStyles.iconStroke2}`} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
               </svg>

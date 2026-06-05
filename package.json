@@ -10,15 +10,20 @@
   },
   "dependencies": {
     "@mapbox/mapbox-gl-geocoder": "^5.1.2",
+    "drizzle-orm": "^0.45.2",
+    "lucia": "^3.2.2",
     "lucide-react": "^1.17.0",
     "mapbox-gl": "^3.24.0",
     "next": "16.2.7",
+    "nodemailer": "^8.0.10",
+    "oslo": "^1.2.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-fast-marquee": "^1.6.5",
     "react-intersection-observer": "^10.0.3",
     "rizzui": "^2.1.0",
-    "sharp": "^0.34.5"
+    "sharp": "^0.34.5",
+    "sonner": "^2.0.7"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
