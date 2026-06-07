@@ -14,11 +14,11 @@ export interface NavbarProps {
 }
 
 const defaultNavItems: NavItem[] = [
-    { label: 'Agents', href: '#' },
-    { label: 'Intel', href: '#' },
-    { label: 'Special Ops', href: '#' },
-    { label: 'Q Branch', href: '#' },
-    { label: 'Head Quarters', href: '#' },
+    { label: 'Home', href: '#' },
+    { label: 'Procing', href: '#' },
+    { label: 'Contact', href: '#' },
+    { label: 'Privacy Policy', href: '#' },
+    { label: 'Terms & Coditions', href: '#' },
 ]
 
 export const Navbar: React.FC<NavbarProps> = ({

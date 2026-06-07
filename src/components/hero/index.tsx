@@ -8,7 +8,7 @@ export function Hero() {
                 <BackgroundMap />
 
                 {/* Asymmetric gradient layers for seamless text contrast */}
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/60 to-transparent lg:block hidden" />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/60 via-slate-950/60 to-transparent lg:block hidden" />
                 <div className="absolute inset-0 bg-slate-950/70 lg:hidden block" />
             </div>
 

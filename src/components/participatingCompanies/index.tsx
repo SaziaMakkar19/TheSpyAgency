@@ -35,14 +35,15 @@ export function ParticipatingCompanies() {
                     {participatingCompanies.map((partner, idx) => (
                         <Box
                             key={`trusted-partners-${idx}`}
-                            className="lg:mx-[43px] mx-6 flex items-center [&_>_span]:w-auto [&_>_span]:!h-3 relative"
+                            className="lg:mx-[43px] mx-6 flex items-center relative"
                         >
                             <Image
                                 src={partner.image}
                                 alt={partner.title}
                                 width={160}
                                 height={44}
-                                className="w-auto h-7 sm:h-8 md:h-9 lg:h-11 3xl:h-[50px]"
+                                className="h-7 sm:h-8 md:h-9 lg:h-11 3xl:h-[50px]"
+                                style={{ width: 'auto' }} // <-- Forces Next.js to preserve aspect ratio & suppresses warning
                             />
                         </Box>
                     ))}
