@@ -1,8 +1,7 @@
-
-export * from './grid/grid';
-export * from './grid/col';
-export * from './box';
-export * from './container';
-export * from './section';
-export * from './flex';
-
+export * from './grid/grid'
+export * from './grid/col'
+export * from './box'
+export * from './container'
+export * from './section'
+export * from './flex'
+export * from './button'
