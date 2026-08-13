@@ -43,8 +43,9 @@ export const AuthService = {
             )
         }
 
-        // Always redirect, regardless of whether a session existed
-        return redirect('/')
+        console.log('User signed out successfully.')
+
+        redirect('/')
     },
     magicLogin: async (email: string, redirectTo: string) => {
         let user = await db.query.users.findFirst({
@@ -85,15 +86,18 @@ export const AuthService = {
             .execute()
 
         const tokenId = generateId(40)
-        await db
+
+        const expiresAt = createDate(new TimeSpan(2, 'h'))
+
+        const result = await db
             .insert(verificationTokens)
             .values({
                 id: tokenId,
-                email: email,
-                userId: userId,
-                expiresAt: createDate(new TimeSpan(2, 'h')),
+                email,
+                userId,
+                expiresAt,
             })
-            .execute()
+            .returning()
 
         return tokenId
     },

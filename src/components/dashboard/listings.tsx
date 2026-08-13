@@ -1,86 +1,3 @@
-// 'use client'
-// import React, { useState } from 'react'
-// import { FolderView } from './folderView'
-
-// const LISTINGS_DATA = [
-//     {
-//         id: 'folder-1',
-//         title: 'Active Listings',
-//         description: 'Currently on the market',
-//         files: [
-//             {
-//                 id: 'f1',
-//                 name: '123_Main_St_Floorplans.pdf',
-//                 type: 'Document',
-//                 size: '5 MB',
-//             },
-//         ],
-//     },
-//     {
-//         id: 'folder-2',
-//         title: 'Archive',
-//         description: 'Past listings and sold properties',
-//         files: [
-//             {
-//                 id: 'f2',
-//                 name: '2025_Sales_Data.xlsx',
-//                 type: 'Spreadsheet',
-//                 size: '1.5 MB',
-//             },
-//         ],
-//     },
-// ]
-
-// export const Listings = () => {
-//     // 1. We keep all folders in state so we can add/delete files within them
-//     const [folders, setFolders] = useState(LISTINGS_DATA)
-//     // 2. Track which folder the user is currently viewing
-//     const [activeFolderId, setActiveFolderId] = useState<string | null>(null)
-
-//     // Find the folder object currently being viewed
-//     const activeFolder = folders.find((f) => f.id === activeFolderId) || null
-
-//     const handleDeleteFile = (folderId: string, fileId: string) => {
-//         setFolders((prev) =>
-//             prev.map((folder) =>
-//                 folder.id === folderId
-//                     ? {
-//                           ...folder,
-//                           files: folder.files.filter((f) => f.id !== fileId),
-//                       }
-//                     : folder,
-//             ),
-//         )
-//     }
-
-//     const handleAddFile = (folderId: string) => {
-//         const newFile = {
-//             id: Date.now().toString(),
-//             name: 'New_File.pdf',
-//             type: 'Document',
-//             size: '0 KB',
-//         }
-//         setFolders((prev) =>
-//             prev.map((folder) =>
-//                 folder.id === folderId
-//                     ? { ...folder, files: [...folder.files, newFile] }
-//                     : folder,
-//             ),
-//         )
-//     }
-
-//     return (
-//         <FolderView
-//             title="Listings"
-//             currentFolder={activeFolder}
-//             allFolders={folders}
-//             onNavigate={setActiveFolderId}
-//             onDeleteFile={handleDeleteFile}
-//             onAddFile={handleAddFile}
-//         />
-//     )
-// }
-
 'use client'
 import React, { useState } from 'react'
 import { FolderView, Folder, DocumentFile } from './folderView'
@@ -88,70 +5,71 @@ import { FolderView, Folder, DocumentFile } from './folderView'
 // --- 1. Restructured Intel Payload (Tree Format) ---
 // We now wrap your data inside a "Root" master folder.
 // Notice we added a 'children' array to demonstrate deep nesting capabilities.
-const INITIAL_ROOT_NODE: Folder = {
-    id: 'root',
-    title: 'Listings Directory',
-    description: 'Master index of all property intelligence.',
-    files: [],
-    children: [
-        {
-            id: 'folder-1',
-            title: 'Active Listings',
-            description: 'Currently on the market',
-            files: [],
-            children: [
-                {
-                    id: 'listing-1',
-                    title: '123 Main St',
-                    description: 'Test listing',
-                    files: [
-                        {
-                            id: 'f1',
-                            name: '123_Main_St.pdf',
-                            type: 'Document',
-                            size: '5 MB',
-                        },
-                    ],
-                    children: [
-                        {
-                            id: 'floorplans',
-                            title: 'Floor Plans ',
-                            description: 'Test floor plans',
-                            files: [
-                                {
-                                    id: 'f2',
-                                    name: '123_Main_St_Floorplans.pdf',
-                                    type: 'Document',
-                                    size: '5 MB',
-                                },
-                            ],
-                            children: [], // Can go infinitely deep
-                        },
-                    ], // Can go infinitely deep
-                },
-            ],
-        },
-        {
-            id: 'folder-2',
-            title: 'Archive',
-            description: 'Past listings and sold properties',
-            files: [
-                {
-                    id: 'f2',
-                    name: '2025_Sales_Data.xlsx',
-                    type: 'Spreadsheet',
-                    size: '1.5 MB',
-                },
-            ],
-            children: [],
-        },
-    ],
-}
+// const INITIAL_ROOT_NODE: Folder = {
+//     id: 'root',
+//     title: 'Listings Directory',
+//     description: 'Master index of all property intelligence.',
+//     files: [],
+//     children: [
+//         {
+//             id: 'folder-1',
+//             title: 'Active Listings',
+//             description: 'Currently on the market',
+//             files: [],
+//             children: [
+//                 {
+//                     id: 'listing-1',
+//                     title: '123 Main St',
+//                     description: 'Test listing',
+//                     files: [
+//                         {
+//                             id: 'f1',
+//                             name: '123_Main_St.pdf',
+//                             type: 'Document',
+//                             size: '5 MB',
 
-export const Listings = () => {
+//                         },
+//                     ],
+//                     children: [
+//                         {
+//                             id: 'floorplans',
+//                             title: 'Floor Plans ',
+//                             description: 'Test floor plans',
+//                             files: [
+//                                 {
+//                                     id: 'f2',
+//                                     name: '123_Main_St_Floorplans.pdf',
+//                                     type: 'Document',
+//                                     size: '5 MB',
+//                                 },
+//                             ],
+//                             children: [], // Can go infinitely deep
+//                         },
+//                     ], // Can go infinitely deep
+//                 },
+//             ],
+//         },
+//         {
+//             id: 'folder-2',
+//             title: 'Archive',
+//             description: 'Past listings and sold properties',
+//             files: [
+//                 {
+//                     id: 'f2',
+//                     name: '2025_Sales_Data.xlsx',
+//                     type: 'Spreadsheet',
+//                     size: '1.5 MB',
+//                 },
+//             ],
+//             children: [],
+//         },
+//     ],
+// }
+
+export const Listings = ({ initialTreeData }: { initialTreeData: any }) => {
     // --- 2. State Management ---
     // We hold the entire nested object graph in state
-    const [rootNode, setRootNode] = useState<Folder>(INITIAL_ROOT_NODE)
+    const [rootNode, setRootNode] = useState<Folder>(initialTreeData)
 
     // We track the operative's drill-down path to generate breadcrumbs
     const [currentPath, setCurrentPath] = useState<string[]>(['root'])
@@ -226,6 +144,7 @@ export const Listings = () => {
             name: 'Classified_Addendum.pdf',
             type: 'Document',
             size: '120 KB',
+            url: 'https://www.example.com/file.pdf',
         }
 
         setRootNode((prevRoot) =>
@@ -242,8 +161,8 @@ export const Listings = () => {
             currentFolder={activeFolder}
             parentFolderIds={parentFolderIds}
             onNavigate={handleNavigate}
-            onDeleteFile={handleDeleteFile}
-            onAddFile={handleAddFile}
+            // onDeleteFile={handleDeleteFile}
+            // onAddFile={handleAddFile}
         />
     )
 }

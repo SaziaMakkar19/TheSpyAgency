@@ -3,12 +3,11 @@
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { Text } from 'rizzui'
-import React from 'react'
-
 import { Box, Flex } from '@/components/layout'
 import { EmailLogin } from '@/components/login/email-login'
-import { LoginPageSticker } from '@/components/icons/login-page-sticker'
 import { LoginIllustration } from '@/components/icons/login-illustration'
+import Link from 'next/link'
+import { HouseIcon } from '@/components/icons/home'
 
 export default function LoginView({ message }: { message?: string }) {
     const searchParams = useSearchParams()
@@ -23,6 +22,19 @@ export default function LoginView({ message }: { message?: string }) {
                 justify="center"
                 align="center"
             >
+                <Link
+                    href="/"
+                    className="
+                        absolute top-6 left-6 md:top-8 md:left-8 
+                        group inline-flex items-center gap-2 text-sm font-medium 
+                        text-slate-500 hover:text-slate-900 
+                        dark:text-slate-400 dark:hover:text-slate-100 
+                        transition-all duration-200 ease-out active:scale-95
+                    "
+                >
+                    <HouseIcon />
+                    Home
+                </Link>
                 <Box className="w-full max-w-[420px] flex flex-col gap-12 justify-center py-8">
                     {/* Logo / Brand Header */}
                     <Flex

@@ -5,6 +5,7 @@ import { Button } from '../layout/button'
 import { NewCampaignModal } from './newCampaign'
 import { logoutAction } from '@/app/actions/auth'
 import { useRouter } from 'next/navigation'
+import { signOutAction } from '@/app/actions/auth'
 
 type TabState =
     | 'profileDocs'
@@ -120,6 +121,21 @@ const Icons = {
             ></path>
         </svg>
     ),
+    Logout: () => (
+        <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5a2 2 0 012 2v1"
+            />
+        </svg>
+    ),
 }
 
 // --- Main Dashboard Component ---
@@ -145,11 +161,21 @@ export default function Dashboard({
         setActiveTab(tab)
         setIsMobileMenuOpen(false) // Auto-close menu on mobile
         router.push(`/dashboard/${tab}`)
+        setIsMobileMenuOpen(false)
+    }
+
+    const handleLogout = async () => {
+        try {
+            setIsLoggingOut(true)
+            setIsMobileMenuOpen(false)
+            await signOutAction()
+        } finally {
+            setIsLoggingOut(false)
+        }
     }
 
     return (
         <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-            {/* Mobile Top Header */}
             <div className="md:hidden absolute top-0 left-0 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-30 shadow-md">
                 <h1 className="text-lg font-bold tracking-widest text-emerald-500">
                     THE SPY AGENCY
@@ -162,7 +188,6 @@ export default function Dashboard({
                 </button>
             </div>
 
-            {/* Overlay for Mobile Sidebar */}
             {isMobileMenuOpen && (
                 <div
                     className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
@@ -170,7 +195,6 @@ export default function Dashboard({
                 />
             )}
 
-            {/* Sidebar Navigation */}
             <aside
                 className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 ease-in-out
@@ -227,6 +251,7 @@ export default function Dashboard({
                         <Icons.Rocket />
                         <span className="font-medium">Campaigns</span>
                     </button>
+
                     <div className="px-4 py-6">
                         <Button
                             onClick={handleCreateCampaign}
@@ -237,12 +262,10 @@ export default function Dashboard({
             border border-slate-700/50 
             hover:border-emerald-500/20 
             !text-slate-300 
-         
             transition-all duration-300
             shadow-none hover:shadow-[0_0_15px_-3px_rgba(16,185,129,0.2)]
         "
                         >
-                            {/* Refined Icon Container */}
                             <span className="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform duration-300">
                                 <svg
                                     className="w-3.5 h-3.5"
@@ -293,6 +316,19 @@ export default function Dashboard({
                         <Icons.Users />
                         <span className="font-medium">Connections</span>
                     </button>
+
+                    <div className="mt-6 px-4 pb-6">
+                        <button
+                            onClick={handleLogout}
+                            disabled={isLoggingOut}
+                            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            <Icons.Logout />
+                            <span className="font-medium">
+                                {isLoggingOut ? 'Logging out...' : 'Log off'}
+                            </span>
+                        </button>
+                    </div>
                 </nav>
 
                 <div className="p-4 border-t border-slate-800 bg-slate-900/50">
