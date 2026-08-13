@@ -1,28 +1,3 @@
-// import { redirect } from 'next/navigation'
-// import { validateRequest } from '@/lib/utils/auth'
-
-// export default async function Dashboard() {
-//     const { user } = await validateRequest()
-
-//     if (!user) {
-//         redirect('/login')
-//     }
-
-//     return (
-//         <div className="p-6">
-//             <h1 className="text-xl font-bold">Dashboard</h1>
-
-//             <p className="mt-4">
-//                 Logged in as: <strong>{user.email}</strong>
-//             </p>
-
-//             <p>Name: {user.name}</p>
-
-//             <p>Status: {user.status}</p>
-//         </div>
-//     )
-// }
-
 'use client'
 
 import React, { useState } from 'react'
@@ -33,6 +8,7 @@ import { ProfileDocs } from './profileDocs'
 import { Listings } from './listings'
 import { Campaigns } from './campaigns'
 import { Button } from '../layout/button'
+import { signOutAction } from '@/app/actions/auth'
 
 type TabState =
     | 'profileDocs'
@@ -148,27 +124,53 @@ const Icons = {
             ></path>
         </svg>
     ),
+    Logout: () => (
+        <svg
+            className="w-5 h-5"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth="2"
+        >
+            <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a2 2 0 01-2 2H6a2 2 0 01-2-2V7a2 2 0 012-2h5a2 2 0 012 2v1"
+            />
+        </svg>
+    ),
 }
 
-// --- Main Dashboard Component ---
-
-export default function Dashboard() {
+export default function Dashboard({
+    initialTreeData,
+}: {
+    initialTreeData: any
+}) {
     const [activeTab, setActiveTab] = useState<TabState>('profileDocs')
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+    const [isLoggingOut, setIsLoggingOut] = useState(false)
 
     const handleCreateCampaign = () => {
         alert('Initializing new campaign sequence...')
-        // Add your logic here (e.g., set a modal open state)
     }
 
     const handleTabChange = (tab: TabState) => {
         setActiveTab(tab)
-        setIsMobileMenuOpen(false) // Auto-close menu on mobile
+        setIsMobileMenuOpen(false)
+    }
+
+    const handleLogout = async () => {
+        try {
+            setIsLoggingOut(true)
+            setIsMobileMenuOpen(false)
+            await signOutAction()
+        } finally {
+            setIsLoggingOut(false)
+        }
     }
 
     return (
         <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
-            {/* Mobile Top Header */}
             <div className="md:hidden absolute top-0 left-0 right-0 h-16 bg-slate-900 text-white flex items-center justify-between px-4 z-30 shadow-md">
                 <h1 className="text-lg font-bold tracking-widest text-emerald-500">
                     THE SPY AGENCY
@@ -181,7 +183,6 @@ export default function Dashboard() {
                 </button>
             </div>
 
-            {/* Overlay for Mobile Sidebar */}
             {isMobileMenuOpen && (
                 <div
                     className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden"
@@ -189,7 +190,6 @@ export default function Dashboard() {
                 />
             )}
 
-            {/* Sidebar Navigation */}
             <aside
                 className={`
         fixed inset-y-0 left-0 z-50 w-72 bg-slate-900 text-slate-300 flex flex-col transition-transform duration-300 ease-in-out
@@ -246,6 +246,7 @@ export default function Dashboard() {
                         <Icons.Rocket />
                         <span className="font-medium">Campaigns</span>
                     </button>
+
                     <div className="px-4 py-6">
                         <Button
                             onClick={handleCreateCampaign}
@@ -256,12 +257,10 @@ export default function Dashboard() {
             border border-slate-700/50 
             hover:border-emerald-500/20 
             !text-slate-300 
-         
             transition-all duration-300
             shadow-none hover:shadow-[0_0_15px_-3px_rgba(16,185,129,0.2)]
         "
                         >
-                            {/* Refined Icon Container */}
                             <span className="flex items-center justify-center w-6 h-6 rounded-md bg-emerald-500/10 text-emerald-500 group-hover:scale-110 transition-transform duration-300">
                                 <svg
                                     className="w-3.5 h-3.5"
@@ -312,19 +311,29 @@ export default function Dashboard() {
                         <Icons.Users />
                         <span className="font-medium">Connections</span>
                     </button>
+
+                    <div className="mt-6 px-4 pb-6">
+                        <button
+                            onClick={handleLogout}
+                            disabled={isLoggingOut}
+                            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                            <Icons.Logout />
+                            <span className="font-medium">
+                                {isLoggingOut ? 'Logging out...' : 'Log off'}
+                            </span>
+                        </button>
+                    </div>
                 </nav>
             </aside>
 
-            {/* Main Content Area */}
             <main className="flex-1 overflow-y-auto p-6 md:p-10 pt-24 md:pt-10">
-                {/* DYNAMIC FOLDER VIEWS */}
                 {activeTab === 'profileDocs' && <ProfileDocs />}
-                {activeTab === 'listings' && <Listings />}
+                {activeTab === 'listings' && (
+                    <Listings initialTreeData={initialTreeData} />
+                )}
                 {activeTab === 'campaigns' && <Campaigns />}
-                {/* ANALYTICS VIEW */}
                 {activeTab === 'analytics' && <Analytics />}
-
-                {/* CONNECTIONS VIEW */}
                 {activeTab === 'connections' && <Connections />}
             </main>
         </div>

@@ -45,7 +45,9 @@ export const AuthService = {
             sessionCookie.attributes,
         )
 
-        redirect('/login')
+        console.log('User signed out successfully.')
+
+        redirect('/')
     },
 
     magicLogin: async (email: string) => {
@@ -85,15 +87,18 @@ export const AuthService = {
             .execute()
 
         const tokenId = generateId(40)
-        await db
+
+        const expiresAt = createDate(new TimeSpan(2, 'h'))
+
+        const result = await db
             .insert(verificationTokens)
             .values({
                 id: tokenId,
-                email: email,
-                userId: userId,
-                expiresAt: createDate(new TimeSpan(2, 'h')),
+                email,
+                userId,
+                expiresAt,
             })
-            .execute()
+            .returning()
 
         return tokenId
     },
