@@ -22,3 +22,7 @@ export async function requestMagicLinkAction(formData: FormData) {
         }
     }
 }
+
+export async function signOutAction() {
+    await AuthService.signOut()
+}
