@@ -38,3 +38,30 @@ export const verificationTokens = pgTable('verification_token', {
         mode: 'date',
     }).notNull(),
 })
+
+export const participantStatusEnum = pgEnum('participant_status', [
+    'pending',
+    'accepted',
+    'declined',
+])
+
+export const campaigns = pgTable('campaigns', {
+    id: text('id').primaryKey(),
+    listingName: text('listing_name').notNull(),
+    ownerId: text('owner_id')
+        .references(() => users.id)
+        .notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+})
+
+export const campaignParticipants = pgTable('campaign_participants', {
+    id: text('id').primaryKey(),
+    // Use the object syntax for references:
+    campaignId: text('campaign_id')
+        .references(() => campaigns.id, { onDelete: 'cascade' })
+        .notNull(),
+    email: text('email').notNull(),
+    status: participantStatusEnum('status').default('pending').notNull(),
+    // Add the link to the users table
+    userId: text('user_id').references(() => users.id), // Nullable by default
+})

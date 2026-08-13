@@ -1,13 +1,10 @@
 'use client'
 
 import React, { useState } from 'react'
-import { FolderView } from './folderView'
-import { Analytics } from './analytics'
-import { Connections } from './connections'
-import { ProfileDocs } from './profileDocs'
-import { Listings } from './listings'
-import { Campaigns } from './campaigns'
 import { Button } from '../layout/button'
+import { NewCampaignModal } from './newCampaign'
+import { logoutAction } from '@/app/actions/auth'
+import { useRouter } from 'next/navigation'
 import { signOutAction } from '@/app/actions/auth'
 
 type TabState =
@@ -141,21 +138,29 @@ const Icons = {
     ),
 }
 
+// --- Main Dashboard Component ---
+
 export default function Dashboard({
-    initialTreeData,
+    user,
+    children,
 }: {
-    initialTreeData: any
+    user: any
+    children: React.ReactNode
 }) {
-    const [activeTab, setActiveTab] = useState<TabState>('profileDocs')
+    const router = useRouter()
+    const [activeTab, setActiveTab] = useState<TabState | null>(null)
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-    const [isLoggingOut, setIsLoggingOut] = useState(false)
+    const [openNewCampaignModal, setOpenNewCampaignModal] = useState(false)
 
     const handleCreateCampaign = () => {
-        alert('Initializing new campaign sequence...')
+        setOpenNewCampaignModal(true)
+        // Add your logic here (e.g., set a modal open state)
     }
 
     const handleTabChange = (tab: TabState) => {
         setActiveTab(tab)
+        setIsMobileMenuOpen(false) // Auto-close menu on mobile
+        router.push(`/dashboard/${tab}`)
         setIsMobileMenuOpen(false)
     }
 
@@ -325,17 +330,44 @@ export default function Dashboard({
                         </button>
                     </div>
                 </nav>
+
+                <div className="p-4 border-t border-slate-800 bg-slate-900/50">
+                    <button
+                        onClick={async () => {
+                            // Assuming you have a sign-out action or call
+                            await logoutAction()
+                        }}
+                        className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
+                    >
+                        <svg
+                            className="w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                            />
+                        </svg>
+                        <span className="font-medium">Sign Out</span>
+                    </button>
+                </div>
             </aside>
 
-            <main className="flex-1 overflow-y-auto p-6 md:p-10 pt-24 md:pt-10">
-                {activeTab === 'profileDocs' && <ProfileDocs />}
-                {activeTab === 'listings' && (
-                    <Listings initialTreeData={initialTreeData} />
-                )}
-                {activeTab === 'campaigns' && <Campaigns />}
-                {activeTab === 'analytics' && <Analytics />}
-                {activeTab === 'connections' && <Connections />}
+            {/* Main Content Area */}
+            {/* Main Content (Swaps based on URL) */}
+            <main className="flex-1 overflow-y-auto p-6 md:p-10">
+                {children}
             </main>
+
+            {openNewCampaignModal && (
+                <NewCampaignModal
+                    onClose={() => setOpenNewCampaignModal(false)}
+                />
+            )}
         </div>
     )
 }

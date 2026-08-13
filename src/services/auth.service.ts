@@ -31,26 +31,23 @@ const UserService = {
 export const AuthService = {
     signOut: async () => {
         const { session } = await validateRequest()
-        if (!session) return
 
-        await lucia.invalidateSession(session.id)
-
-        const sessionCookie = lucia.createBlankSessionCookie()
-
-        // FIX: Await cookies() here to handle Next.js 15+ asynchronous cookie store changes
-        const cookieStore = await cookies()
-        cookieStore.set(
-            sessionCookie.name,
-            sessionCookie.value,
-            sessionCookie.attributes,
-        )
+        if (session) {
+            await lucia.invalidateSession(session.id)
+            const sessionCookie = lucia.createBlankSessionCookie()
+            const cookieStore = await cookies()
+            cookieStore.set(
+                sessionCookie.name,
+                sessionCookie.value,
+                sessionCookie.attributes,
+            )
+        }
 
         console.log('User signed out successfully.')
 
         redirect('/')
     },
-
-    magicLogin: async (email: string) => {
+    magicLogin: async (email: string, redirectTo: string) => {
         let user = await db.query.users.findFirst({
             where: eq(users.email, email),
         })
@@ -68,7 +65,9 @@ export const AuthService = {
             user.id,
             email,
         )
-        const link = `${process.env.SITE_URL}/login/verify?token=${token}`
+
+        const link = `${process.env.SITE_URL}/login/verify?token=${token}&redirectTo=${encodeURIComponent(redirectTo)}`
+        // const link = `${process.env.SITE_URL}/login/verify?token=${token}`
         const html = await render(AuthenticationEmail({ url: link }))
 
         await sendEmail({

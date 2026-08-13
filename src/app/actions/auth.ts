@@ -4,13 +4,14 @@ import { AuthService } from '@/services/auth.service'
 
 export async function requestMagicLinkAction(formData: FormData) {
     const email = formData.get('email') as string
+    const redirectTo = formData.get('redirectTo') as string
 
     if (!email || !email.includes('@')) {
         return { error: 'Please provide a valid email address.' }
     }
 
     try {
-        const result = await AuthService.magicLogin(email)
+        const result = await AuthService.magicLogin(email, redirectTo)
         if (result && result.ok) {
             return { success: true }
         }

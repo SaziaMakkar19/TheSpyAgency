@@ -1,5 +1,7 @@
 'use client'
 
+import Image from 'next/image'
+import { useSearchParams } from 'next/navigation'
 import { Text } from 'rizzui'
 import { Box, Flex } from '@/components/layout'
 import { EmailLogin } from '@/components/login/email-login'
@@ -8,6 +10,9 @@ import Link from 'next/link'
 import { HouseIcon } from '@/components/icons/home'
 
 export default function LoginView({ message }: { message?: string }) {
+    const searchParams = useSearchParams()
+    const redirectTo = searchParams.get('redirectTo') || '/dashboard'
+
     return (
         <Box className="grid w-screen min-h-screen md:grid-cols-2 bg-slate-50 dark:bg-slate-950 font-geist antialiased">
             {/* Left Column: Form Container */}
@@ -52,7 +57,7 @@ export default function LoginView({ message }: { message?: string }) {
 
                     {/* Core Login Component */}
                     <Box className="relative group">
-                        <EmailLogin />
+                        <EmailLogin redirectTo={redirectTo} />
                     </Box>
 
                     {/* Institutional Footer */}

@@ -9,7 +9,7 @@ import { Envelop } from '@/components/icons/envelop'
 import { Box, Button } from '@/components/layout'
 import { requestMagicLinkAction } from '@/app/actions/auth'
 
-export const EmailLogin = () => {
+export const EmailLogin = ({ redirectTo }: { redirectTo: string }) => {
     const [isLoading, setIsLoading] = useState(false)
     const [isSuccess, setIsSuccess] = useState(false)
     const [submittedEmail, setSubmittedEmail] = useState('')
@@ -102,6 +102,7 @@ export const EmailLogin = () => {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 w-full">
+            <input type="hidden" name="redirectTo" value={redirectTo} />
             <Box className="w-full">
                 <Input
                     autoComplete="email"

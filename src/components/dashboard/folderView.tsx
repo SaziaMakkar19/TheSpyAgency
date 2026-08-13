@@ -100,7 +100,7 @@ export const FolderView = ({
                 >
                     <span className="mr-1">←</span> Back
                 </button>
-            )}
+            }
 
             {/* Folder Header */}
             <div className="flex justify-between items-start mb-8">
