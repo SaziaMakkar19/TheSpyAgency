@@ -59,7 +59,7 @@ export const FolderView = ({
     return (
         <div className="max-w-6xl mx-auto p-6 animate-in fade-in duration-300">
             {/* Dynamic Breadcrumb Tracking Back Button [cite: 15] */}
-            {hasParent && (
+            {
                 <button
                     onClick={() => {
                         // Grab the immediate parent node out of the tracked historical stack [cite: 16]
@@ -71,7 +71,7 @@ export const FolderView = ({
                 >
                     <span className="mr-1">←</span> Back
                 </button>
-            )}
+            }
 
             {/* Folder Identification & Action Header */}
             <div className="flex justify-between items-start mb-8">
