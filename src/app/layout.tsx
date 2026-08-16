@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { Outfit, Inter, Space_Grotesk } from 'next/font/google'
+import Providers from './providers'
 
 const outfit = Outfit({
     subsets: ['latin'],
@@ -45,7 +46,8 @@ export default function RootLayout({
             <body
                 className={`${outfit.variable} ${inter.variable} ${spaceGrotesk.variable}`}
             >
-                {children}
+                <Providers>{children}</Providers>
+                {/* {children} */}
             </body>
         </html>
     )

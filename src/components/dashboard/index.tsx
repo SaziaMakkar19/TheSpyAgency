@@ -1,11 +1,12 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Button } from '../layout/button'
 import { NewCampaignModal } from './newCampaign'
-import { logoutAction } from '@/app/actions/auth'
 import { useRouter } from 'next/navigation'
 import { signOutAction } from '@/app/actions/auth'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 
 type TabState =
     | 'profileDocs'
@@ -147,32 +148,26 @@ export default function Dashboard({
     user: any
     children: React.ReactNode
 }) {
-    const router = useRouter()
-    const [activeTab, setActiveTab] = useState<TabState | null>(null)
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const [openNewCampaignModal, setOpenNewCampaignModal] = useState(false)
+
+    const pathname = usePathname()
+
+    // Helper to check if active
+    const isActive = (path: string) => pathname?.includes(path)
 
     const handleCreateCampaign = () => {
         setOpenNewCampaignModal(true)
         // Add your logic here (e.g., set a modal open state)
     }
 
-    const handleTabChange = (tab: TabState) => {
-        setActiveTab(tab)
-        setIsMobileMenuOpen(false) // Auto-close menu on mobile
-        router.push(`/dashboard/${tab}`)
-        setIsMobileMenuOpen(false)
-    }
-
-    const handleLogout = async () => {
-        try {
-            setIsLoggingOut(true)
-            setIsMobileMenuOpen(false)
-            await signOutAction()
-        } finally {
-            setIsLoggingOut(false)
-        }
-    }
+    // const handleTabChange = (tab: TabState) => {
+    //     setLoadingTab(tab)
+    //     setActiveTab(tab)
+    //     setIsMobileMenuOpen(false) // Auto-close menu on mobile
+    //     router.push(`/dashboard/${tab}`)
+    //     setIsMobileMenuOpen(false)
+    // }
 
     return (
         <div className="flex h-screen bg-slate-50 font-sans overflow-hidden">
@@ -216,41 +211,41 @@ export default function Dashboard({
                         Folders
                     </p>
 
-                    <button
-                        onClick={() => handleTabChange('profileDocs')}
+                    <Link
+                        href="/dashboard/profileDocs"
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                            activeTab === 'profileDocs'
+                            isActive('/dashboard/profileDocs')
                                 ? 'bg-emerald-500/20 text-white shadow-md'
                                 : 'hover:bg-slate-800 hover:text-slate-100'
                         }`}
                     >
                         <Icons.Profile />
                         <span className="font-medium">Profile Docs</span>
-                    </button>
+                    </Link>
 
-                    <button
-                        onClick={() => handleTabChange('listings')}
+                    <Link
+                        href="/dashboard/listings"
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                            activeTab === 'listings'
+                            isActive('/dashboard/listings')
                                 ? 'bg-emerald-500/20 text-white shadow-md'
                                 : 'hover:bg-slate-800 hover:text-slate-100'
                         }`}
                     >
                         <Icons.Home />
                         <span className="font-medium">Listings</span>
-                    </button>
+                    </Link>
 
-                    <button
-                        onClick={() => handleTabChange('campaigns')}
+                    <Link
+                        href="/dashboard/campaigns"
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                            activeTab === 'campaigns'
+                            isActive('/dashboard/campaigns')
                                 ? 'bg-emerald-500/20 text-white shadow-md'
                                 : 'hover:bg-slate-800 hover:text-slate-100'
                         }`}
                     >
                         <Icons.Rocket />
                         <span className="font-medium">Campaigns</span>
-                    </button>
+                    </Link>
 
                     <div className="px-4 py-6">
                         <Button
@@ -293,49 +288,36 @@ export default function Dashboard({
                         System
                     </p>
 
-                    <button
-                        onClick={() => handleTabChange('analytics')}
+                    <Link
+                        href="/dashboard/analytics"
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                            activeTab === 'analytics'
+                            isActive('/dashboard/analytics')
                                 ? 'bg-emerald-500/20 text-white shadow-md'
                                 : 'hover:bg-slate-800 hover:text-slate-100'
                         }`}
                     >
                         <Icons.Chart />
                         <span className="font-medium">Analytics</span>
-                    </button>
+                    </Link>
 
-                    <button
-                        onClick={() => handleTabChange('connections')}
+                    <Link
+                        href="/dashboard/connections"
                         className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl transition-all duration-200 ${
-                            activeTab === 'connections'
+                            isActive('/dashboard/connections')
                                 ? 'bg-emerald-500/20 text-white shadow-md'
                                 : 'hover:bg-slate-800 hover:text-slate-100'
                         }`}
                     >
                         <Icons.Users />
                         <span className="font-medium">Connections</span>
-                    </button>
-
-                    <div className="mt-6 px-4 pb-6">
-                        <button
-                            onClick={handleLogout}
-                            disabled={isLoggingOut}
-                            className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
-                            <Icons.Logout />
-                            <span className="font-medium">
-                                {isLoggingOut ? 'Logging out...' : 'Log off'}
-                            </span>
-                        </button>
-                    </div>
+                    </Link>
                 </nav>
 
                 <div className="p-4 border-t border-slate-800 bg-slate-900/50">
                     <button
                         onClick={async () => {
                             // Assuming you have a sign-out action or call
-                            await logoutAction()
+                            await signOutAction()
                         }}
                         className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200"
                     >

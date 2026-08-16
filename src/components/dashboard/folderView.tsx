@@ -22,8 +22,8 @@ interface FolderViewProps {
     currentFolder: Folder | null
     parentFolderIds: string[]
     onNavigate: (folderId: string | null) => void
-    // onDeleteFile: (folderId: string, fileId: string) => void
-    // onAddFile: (folderId: string) => void
+    onDeleteFile?: (folderId: string, fileId: string) => void
+    onAddFile?: (folderId: string) => void
     onFileClick?: (file: DocumentFile) => void
 }
 
@@ -32,8 +32,8 @@ export const FolderView = ({
     currentFolder,
     parentFolderIds = [],
     onNavigate,
-    // onDeleteFile,
-    // onAddFile,
+    onDeleteFile,
+    onAddFile,
     onFileClick,
 }: FolderViewProps) => {
     const [selectedFile, setSelectedFile] = useState<DocumentFile | null>(null)
@@ -100,7 +100,7 @@ export const FolderView = ({
                 >
                     <span className="mr-1">←</span> Back
                 </button>
-            }
+            )}
 
             {/* Folder Header */}
             <div className="flex justify-between items-start mb-8">
@@ -114,12 +114,14 @@ export const FolderView = ({
                         </p>
                     )}
                 </div>
-                {/* <button
-                    onClick={() => onAddFile(currentFolder.id)}
-                    className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
-                >
-                    + Add File
-                </button> */}
+                {onAddFile && (
+                    <button
+                        onClick={() => onAddFile(currentFolder.id)}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors shadow-sm"
+                    >
+                        + Add File
+                    </button>
+                )}
             </div>
 
             {/* Folders Grid */}
@@ -215,31 +217,33 @@ export const FolderView = ({
                                         )}
 
                                         {/* File Actions (Delete Button) */}
-                                        {/* <button
-                                            onClick={(e) => {
-                                                e.stopPropagation()
-                                                onDeleteFile(
-                                                    currentFolder.id,
-                                                    file.id,
-                                                )
-                                            }}
-                                            className="absolute top-3 right-3 z-20 p-2 bg-white/90 backdrop-blur-sm text-slate-400 hover:text-white hover:bg-red-500 rounded-full opacity-0 group-hover:opacity-100 shadow-sm transition-all duration-200"
-                                            title="Delete file"
-                                        >
-                                            <svg
-                                                className="w-4 h-4"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                                strokeWidth="2.5"
+                                        {onDeleteFile && (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation()
+                                                    onDeleteFile(
+                                                        currentFolder.id,
+                                                        file.id,
+                                                    )
+                                                }}
+                                                className="absolute top-3 right-3 z-20 p-2 bg-white/90 backdrop-blur-sm text-slate-400 hover:text-white hover:bg-red-500 rounded-full opacity-0 group-hover:opacity-100 shadow-sm transition-all duration-200"
+                                                title="Delete file"
                                             >
-                                                <path
-                                                    strokeLinecap="round"
-                                                    strokeLinejoin="round"
-                                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                                />
-                                            </svg>
-                                        </button> */}
+                                                <svg
+                                                    className="w-4 h-4"
+                                                    fill="none"
+                                                    stroke="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                    strokeWidth="2.5"
+                                                >
+                                                    <path
+                                                        strokeLinecap="round"
+                                                        strokeLinejoin="round"
+                                                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                                                    />
+                                                </svg>
+                                            </button>
+                                        )}
 
                                         {/* Meta Information Footer */}
                                         <div

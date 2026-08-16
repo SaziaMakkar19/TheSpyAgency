@@ -1,5 +1,6 @@
 'use client'
 
+import React, { Suspense } from 'react'
 import Image from 'next/image'
 import { useSearchParams } from 'next/navigation'
 import { Text } from 'rizzui'
@@ -9,10 +10,15 @@ import { LoginIllustration } from '@/components/icons/login-illustration'
 import Link from 'next/link'
 import { HouseIcon } from '@/components/icons/home'
 
-export default function LoginView({ message }: { message?: string }) {
+// 1. Extract the logic requiring useSearchParams into its own component
+function LoginForm() {
     const searchParams = useSearchParams()
     const redirectTo = searchParams.get('redirectTo') || '/dashboard'
 
+    return <EmailLogin redirectTo={redirectTo} />
+}
+
+export default function LoginView({ message }: { message?: string }) {
     return (
         <Box className="grid w-screen min-h-screen md:grid-cols-2 bg-slate-50 dark:bg-slate-950 font-geist antialiased">
             {/* Left Column: Form Container */}
@@ -57,7 +63,14 @@ export default function LoginView({ message }: { message?: string }) {
 
                     {/* Core Login Component */}
                     <Box className="relative group">
-                        <EmailLogin redirectTo={redirectTo} />
+                        {/* 2. Wrap the extracted component in a Suspense boundary */}
+                        <Suspense
+                            fallback={
+                                <div className="w-full h-12 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-md"></div>
+                            }
+                        >
+                            <LoginForm />
+                        </Suspense>
                     </Box>
 
                     {/* Institutional Footer */}
