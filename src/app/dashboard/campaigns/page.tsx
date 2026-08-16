@@ -58,7 +58,8 @@ export default async function CampaignsPage() {
     }
 
     // 2. Fetch the data
-    const campaignData = await getCampaignFolders(user.id)
+    const campaignData = await getCampaignFolders(user.id, user.email)
+    console.log('campaignData', campaignData)
 
     return (
         <main className="min-h-screen bg-slate-50/50 py-8">

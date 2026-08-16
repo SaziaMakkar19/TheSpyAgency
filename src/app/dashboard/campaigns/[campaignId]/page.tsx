@@ -17,7 +17,7 @@ export default async function CampaignDetailPage({
 
     return (
         <div className="p-6">
-            <CampaignDetailClient campaign={campaign} />
+            <CampaignDetailClient campaign={campaign} campaignId={campaignId} />
         </div>
     )
 }

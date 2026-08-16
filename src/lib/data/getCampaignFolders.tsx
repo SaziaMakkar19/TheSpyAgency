@@ -5,6 +5,7 @@ import { campaigns, campaignParticipants } from '@/db/schema'
 
 export async function getCampaignFolders(
     userId: string,
+    userEmail: string,
 ): Promise<{ owned: Folder[]; participating: Folder[]; pending: Folder[] }> {
     // 1. Fetch Owned and Participating Campaigns from DB
     const owned = await db
@@ -38,7 +39,7 @@ export async function getCampaignFolders(
         )
         .where(
             and(
-                eq(campaignParticipants.userId, userId),
+                eq(campaignParticipants.email, userEmail),
                 // Isolate only the pending intel
                 eq(campaignParticipants.status, 'pending'),
             ),

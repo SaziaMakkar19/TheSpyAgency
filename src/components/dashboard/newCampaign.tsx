@@ -1,22 +1,45 @@
+'use client'
+
 import React, { useState } from 'react'
-import { CampaignInvite } from '@/email-templates/campaign-invite'
-import { render } from '@react-email/render'
-import { sendEmail } from '@/lib/utils/email'
+import { useQuery } from '@tanstack/react-query'
+import { Folder } from './folderView'
 import { sendCampaignEmails } from '@/app/actions/campaign'
+
+async function fetchListings(): Promise<Folder> {
+    const response = await fetch('/api/listings', {
+        method: 'GET',
+        credentials: 'include',
+    })
+
+    if (!response.ok) {
+        throw new Error('Failed to load listings.')
+    }
+
+    return response.json()
+}
 
 export const NewCampaignModal = ({ onClose }: { onClose: () => void }) => {
     const [selectedListing, setSelectedListing] = useState('')
     const [emailInput, setEmailInput] = useState('')
     const [emails, setEmails] = useState<string[]>([])
-    const [isSending, setIsSending] = useState(false) // Optional: great for disabling the button
+    const [isSending, setIsSending] = useState(false)
 
-    const listings = [
-        { id: '1', name: '123-Main-St' },
-        { id: '2', name: '456-Oak-Ave' },
-        { id: '3', name: '789-Pine-Blvd' },
-    ]
+    // Pulls from cache instantly without redundant API calls
+    const { data: rootNode, isLoading } = useQuery({
+        queryKey: ['dashboard', 'listings'],
+        queryFn: fetchListings,
+        staleTime: 5 * 60 * 1000,
+    })
 
-    const handleAddEmail = (e: any) => {
+    // Only map top-level children (civic addresses/listings), ignoring deep sub-folders
+    const listings = rootNode?.children
+        ? rootNode.children.map((child) => ({
+              id: child.id,
+              name: child.title,
+          }))
+        : []
+
+    const handleAddEmail = (e: React.FormEvent) => {
         e.preventDefault()
         const trimmedEmail = emailInput.trim()
         if (trimmedEmail && !emails.includes(trimmedEmail)) {
@@ -37,7 +60,6 @@ export const NewCampaignModal = ({ onClose }: { onClose: () => void }) => {
             recipients: emails,
         })
 
-        // Call the server action instead of sendEmail
         const result = await sendCampaignEmails(selectedListing, emails)
 
         if (result.success) {
@@ -47,10 +69,9 @@ export const NewCampaignModal = ({ onClose }: { onClose: () => void }) => {
             setIsSending(false)
         }
     }
+
     return (
-        // 1. Frosted Glass Backdrop (No harsh black)
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/20 backdrop-blur-md p-4">
-            {/* 2. Aesthetic Modal Card */}
             <div className="w-full max-w-md bg-white rounded-[24px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-gray-100 p-8">
                 {/* Header */}
                 <div className="flex justify-between items-center mb-8">
@@ -92,10 +113,13 @@ export const NewCampaignModal = ({ onClose }: { onClose: () => void }) => {
                         <select
                             value={selectedListing}
                             onChange={(e) => setSelectedListing(e.target.value)}
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all outline-none text-gray-700 appearance-none cursor-pointer"
+                            disabled={isLoading}
+                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-gray-900/10 focus:border-gray-900 transition-all outline-none text-gray-700 appearance-none cursor-pointer disabled:opacity-50"
                         >
                             <option value="" disabled>
-                                Choose a property...
+                                {isLoading
+                                    ? 'Loading listings...'
+                                    : 'Choose a property...'}
                             </option>
                             {listings.map((listing) => (
                                 <option key={listing.id} value={listing.name}>

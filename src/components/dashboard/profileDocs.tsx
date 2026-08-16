@@ -1,67 +1,76 @@
 'use client'
-import React, { useState } from 'react'
-import { FolderView, Folder, DocumentFile } from './folderView'
 
-// --- 1. Restructured Intel Payload ---
-// We cast this to your upgraded 'Folder' interface and add an empty 'children' array
+import { Folder, DocumentFile } from './folderView'
+import { FileManager, FileManagerAPI } from '@/components/layout/fileManager'
+
 const PROFILE_DOCS_FOLDER: Folder = {
     id: 'profile-docs',
     title: 'Profile Docs',
     description: 'Context documents, writing styles, and brand assets.',
-    children: [], // Added to satisfy the recursive type requirements
-    files: [
-        {
-            id: 'file1',
-            name: 'User_Headshots.zip',
-            type: 'Image',
-            size: '45 MB',
-        },
-        {
-            id: 'file2',
-            name: 'Local_Area_Guide_Langley.pdf',
-            type: 'Document',
-            size: '12 MB',
-        },
-    ],
+    children: [],
+    files: [],
 }
 
 export const ProfileDocs = () => {
-    // We treat the folder as the 'active' folder immediately
-    const [folderData, setFolderData] = useState<Folder>(PROFILE_DOCS_FOLDER)
+    const api: FileManagerAPI = {
+        fetchFiles: async () => {
+            const response = await fetch(`/api/profile-docs/`, {
+                method: 'GET',
+            })
+            if (!response.ok) throw new Error('Failed to fetch files')
+            const data = await response.json()
+            return (data.files as DocumentFile[]) || []
+        },
 
-    const handleDeleteFile = (folderId: string, fileId: string) => {
-        setFolderData((prev) => ({
-            ...prev,
-            files: prev.files.filter((f) => f.id !== fileId),
-        }))
-    }
+        uploadFile: async (file: File, customName: string) => {
+            const formData = new FormData()
+            formData.append('file', file)
+            formData.append('customName', customName)
 
-    const handleAddFile = (folderId: string) => {
-        const newFile: DocumentFile = {
-            id: Date.now().toString(),
-            name: 'New_File.pdf',
-            type: 'Document',
-            size: '0 KB',
-        }
-        setFolderData((prev) => ({ ...prev, files: [...prev.files, newFile] }))
-    }
+            const response = await fetch('/api/profile-docs', {
+                method: 'POST',
+                body: formData,
+            })
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error || 'Upload failed')
 
-    // --- 2. Dummy Navigation Handler ---
-    // Since this is a flat folder with no sub-directories, we intercept navigation requests
-    const handleNavigate = (targetId: string | null) => {
-        console.warn(
-            'Navigation locked: Operative is already at the designated root.',
-        )
+            return {
+                id: result.file.id,
+                name: result.file.name,
+                type: result.file.type,
+                size: result.file.sizeFormatted,
+                url: result.file.url,
+            } as DocumentFile
+        },
+
+        deleteFile: async (file: DocumentFile) => {
+            const separatorIndex = file.id.indexOf('_')
+            if (separatorIndex === -1)
+                throw new Error('Invalid file ID format.')
+
+            const memberMlsId = file.id.substring(0, separatorIndex)
+            const fileName = file.id.substring(separatorIndex + 1)
+
+            const response = await fetch('/api/profile-docs', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ fileName, memberMlsId }),
+            })
+
+            const result = await response.json()
+            if (!response.ok)
+                throw new Error(result.error || 'Failed to delete file')
+
+            return file.id // Return ID to remove it from cache
+        },
     }
 
     return (
-        <FolderView
-            title="Profile Intelligence"
-            currentFolder={folderData}
-            parentFolderIds={[]} // Passes an empty breadcrumb trail
-            onNavigate={handleNavigate} // Satisfies the required function prop
-            onDeleteFile={handleDeleteFile}
-            onAddFile={handleAddFile}
+        <FileManager
+            title="Campaign Documents"
+            folderConfig={PROFILE_DOCS_FOLDER}
+            queryKey={['profileDocs']} // Unique cache key
+            api={api}
         />
     )
 }
