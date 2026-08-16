@@ -1,168 +1,182 @@
 'use client'
+
 import React, { useState } from 'react'
-import { FolderView, Folder, DocumentFile } from './folderView'
+import { useQuery } from '@tanstack/react-query'
+import { FolderView, Folder } from './folderView'
+import { ListingsLoading } from '@/components/loader/loading'
 
-// --- 1. Restructured Intel Payload (Tree Format) ---
-// We now wrap your data inside a "Root" master folder.
-// Notice we added a 'children' array to demonstrate deep nesting capabilities.
-// const INITIAL_ROOT_NODE: Folder = {
-//     id: 'root',
-//     title: 'Listings Directory',
-//     description: 'Master index of all property intelligence.',
-//     files: [],
-//     children: [
-//         {
-//             id: 'folder-1',
-//             title: 'Active Listings',
-//             description: 'Currently on the market',
-//             files: [],
-//             children: [
-//                 {
-//                     id: 'listing-1',
-//                     title: '123 Main St',
-//                     description: 'Test listing',
-//                     files: [
-//                         {
-//                             id: 'f1',
-//                             name: '123_Main_St.pdf',
-//                             type: 'Document',
-//                             size: '5 MB',
+/*
+ * Fetch listings from our secure server API.
+ */
 
-//                         },
-//                     ],
-//                     children: [
-//                         {
-//                             id: 'floorplans',
-//                             title: 'Floor Plans ',
-//                             description: 'Test floor plans',
-//                             files: [
-//                                 {
-//                                     id: 'f2',
-//                                     name: '123_Main_St_Floorplans.pdf',
-//                                     type: 'Document',
-//                                     size: '5 MB',
-//                                 },
-//                             ],
-//                             children: [], // Can go infinitely deep
-//                         },
-//                     ], // Can go infinitely deep
-//                 },
-//             ],
-//         },
-//         {
-//             id: 'folder-2',
-//             title: 'Archive',
-//             description: 'Past listings and sold properties',
-//             files: [
-//                 {
-//                     id: 'f2',
-//                     name: '2025_Sales_Data.xlsx',
-//                     type: 'Spreadsheet',
-//                     size: '1.5 MB',
-//                 },
-//             ],
-//             children: [],
-//         },
-//     ],
-// }
+async function fetchListings(): Promise<Folder> {
+    const response = await fetch('/api/listings', {
+        method: 'GET',
+        credentials: 'include',
+    })
 
-export const Listings = ({ initialTreeData }: { initialTreeData: any }) => {
-    // --- 2. State Management ---
-    // We hold the entire nested object graph in state
-    const [rootNode, setRootNode] = useState<Folder>(initialTreeData)
+    if (!response.ok) {
+        throw new Error('Failed to load listings.')
+    }
 
-    // We track the operative's drill-down path to generate breadcrumbs
+    return response.json()
+}
+
+export const Listings = () => {
+    /*
+     * React Query handles the cache.
+     */
+
+    const {
+        data: rootNode,
+        isLoading,
+        isFetching,
+        error,
+    } = useQuery({
+        queryKey: ['dashboard', 'listings'],
+
+        queryFn: fetchListings,
+
+        /*
+         * Don't consider listings stale
+         * for 5 minutes.
+         */
+        staleTime: 5 * 60 * 1000,
+
+        /*
+         * Keep them in memory for 30 minutes.
+         */
+        gcTime: 30 * 60 * 1000,
+
+        /*
+         * Switching browser tabs shouldn't
+         * automatically hit Supabase.
+         */
+        refetchOnWindowFocus: false,
+    })
+
+    /*
+     * Loading
+     */
+
+    if (isLoading) {
+        return <ListingsLoading />
+    }
+
+    /*
+     * Error
+     */
+
+    if (error || !rootNode) {
+        return (
+            <div className="max-w-6xl mx-auto p-6">
+                <div className="rounded-2xl border border-red-200 bg-red-50 p-6">
+                    <h2 className="font-bold text-red-700">
+                        Unable to load listings
+                    </h2>
+
+                    <p className="mt-2 text-sm text-red-600">
+                        Please try again later.
+                    </p>
+                </div>
+            </div>
+        )
+    }
+
+    return <ListingsContent rootNode={rootNode} isFetching={isFetching} />
+}
+
+/*
+ * Folder navigation.
+ */
+
+function ListingsContent({
+    rootNode,
+    isFetching,
+}: {
+    rootNode: Folder
+    isFetching: boolean
+}) {
+    /*
+     * Track the user's current folder.
+     */
+
     const [currentPath, setCurrentPath] = useState<string[]>(['root'])
 
-    // --- 3. Tactical Helper Functions ---
+    /*
+     * Recursively find a folder.
+     */
 
-    // Recursively hunt through the tree to find the currently active folder
     const findFolder = (node: Folder, targetId: string): Folder | null => {
-        if (node.id === targetId) return node
+        if (node.id === targetId) {
+            return node
+        }
+
         if (node.children) {
             for (const child of node.children) {
                 const found = findFolder(child, targetId)
-                if (found) return found
+
+                if (found) {
+                    return found
+                }
             }
         }
+
         return null
     }
 
-    // Recursively rebuild the tree when adding/deleting a file deep within it
-    const updateTree = (
-        node: Folder,
-        targetFolderId: string,
-        updater: (f: Folder) => Folder,
-    ): Folder => {
-        if (node.id === targetFolderId) {
-            return updater(node)
-        }
-        if (node.children) {
-            return {
-                ...node,
-                children: node.children.map((child) =>
-                    updateTree(child, targetFolderId, updater),
-                ),
-            }
-        }
-        return node
-    }
+    /*
+     * Current folder.
+     */
 
-    // --- 4. Core Handlers ---
-
-    // The current ID is always the last ID in our tracked path
     const activeFolderId = currentPath[currentPath.length - 1]
+
     const activeFolder = findFolder(rootNode, activeFolderId)
-    // Breadcrumbs are everything in the path EXCEPT the current folder
+
+    /*
+     * Parent IDs for Back button.
+     */
+
     const parentFolderIds = currentPath.slice(0, -1)
 
+    /*
+     * Navigation.
+     */
+
     const handleNavigate = (targetId: string | null) => {
-        if (!targetId) return
+        if (!targetId) {
+            return
+        }
 
         const targetIndex = currentPath.indexOf(targetId)
+
         if (targetIndex !== -1) {
-            // BACKWARD NAVIGATION: Target exists in history, slice the array to travel back
             setCurrentPath(currentPath.slice(0, targetIndex + 1))
-        } else {
-            // FORWARD NAVIGATION: Pushing a new directory to the stack
-            setCurrentPath([...currentPath, targetId])
-        }
-    }
 
-    const handleDeleteFile = (folderId: string, fileId: string) => {
-        setRootNode((prevRoot) =>
-            updateTree(prevRoot, folderId, (folder) => ({
-                ...folder,
-                files: folder.files.filter((f) => f.id !== fileId),
-            })),
-        )
-    }
-
-    const handleAddFile = (folderId: string) => {
-        const newFile: DocumentFile = {
-            id: `file_${Date.now()}`,
-            name: 'Classified_Addendum.pdf',
-            type: 'Document',
-            size: '120 KB',
-            url: 'https://www.example.com/file.pdf',
+            return
         }
 
-        setRootNode((prevRoot) =>
-            updateTree(prevRoot, folderId, (folder) => ({
-                ...folder,
-                files: [...folder.files, newFile],
-            })),
-        )
+        setCurrentPath([...currentPath, targetId])
     }
 
     return (
-        <FolderView
-            title="Intelligence Listings"
-            currentFolder={activeFolder}
-            parentFolderIds={parentFolderIds}
-            onNavigate={handleNavigate}
-            // onDeleteFile={handleDeleteFile}
-            // onAddFile={handleAddFile}
-        />
+        <div className="relative">
+            {/*
+             * Tiny background refresh indicator
+             */}
+
+            {isFetching && (
+                <div className="fixed right-6 top-6 z-40 rounded-full bg-white px-3 py-2 text-xs font-medium text-slate-500 shadow-lg border border-slate-200">
+                    Updating...
+                </div>
+            )}
+
+            <FolderView
+                title="Intelligence Listings"
+                currentFolder={activeFolder}
+                parentFolderIds={parentFolderIds}
+                onNavigate={handleNavigate}
+            />
+        </div>
     )
 }

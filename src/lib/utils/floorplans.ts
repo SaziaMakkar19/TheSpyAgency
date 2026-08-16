@@ -6,7 +6,7 @@ export interface FloorPlanFile {
 
 export const fetchFloorPlans = async (
     property: any,
-    type: string,
+    type: any,
 ): Promise<FloorPlanFile[]> => {
     let bucketName = ''
     let folderPath = ''

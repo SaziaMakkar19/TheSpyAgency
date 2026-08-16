@@ -1,6 +1,6 @@
-import { validateRequest } from '@/lib/utils/auth'
+import React from 'react'
 import Dashboard from '@/components/dashboard'
-import { redirect } from 'next/navigation'
+import { validateRequest } from '@/lib/utils/auth'
 
 export default async function DashboardLayout({
     children,
@@ -9,5 +9,5 @@ export default async function DashboardLayout({
 }) {
     const { user } = await validateRequest()
 
-    return <Dashboard user={user} children={children} />
+    return <Dashboard user={user}>{children}</Dashboard>
 }

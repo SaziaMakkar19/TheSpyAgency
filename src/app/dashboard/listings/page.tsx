@@ -1,5 +1,5 @@
 import { Listings } from '@/components/dashboard/listings'
 
-export default async function ListingsPage() {
+export default function ListingsPage() {
     return <Listings />
 }
