@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Folder } from './folderView'
 import { sendCampaignEmails } from '@/app/actions/campaign'
+import { generateDesignManifest } from '@/app/actions/designDocs'
 
 async function fetchListings(): Promise<Folder> {
     const response = await fetch('/api/listings', {
@@ -18,7 +19,13 @@ async function fetchListings(): Promise<Folder> {
     return response.json()
 }
 
-export const NewCampaignModal = ({ onClose }: { onClose: () => void }) => {
+export const NewCampaignModal = ({
+    onClose,
+    realtorData,
+}: {
+    onClose: () => void
+    realtorData: any
+}) => {
     const [selectedListing, setSelectedListing] = useState('')
     const [emailInput, setEmailInput] = useState('')
     const [emails, setEmails] = useState<string[]>([])
@@ -55,6 +62,19 @@ export const NewCampaignModal = ({ onClose }: { onClose: () => void }) => {
     const handleSubmit = async () => {
         setIsSending(true)
 
+        console.log('Sending to Server Action:', {
+            listingId: selectedListing,
+            recipients: emails,
+        })
+
+        console.log('Generating design.md manifest...')
+        const manifestResult = await generateDesignManifest(realtorData)
+
+        if (!manifestResult.success) {
+            console.warn('Could not generate design.md, proceeding anyway...')
+        }
+
+        // 2. Send the actual campaign
         console.log('Sending to Server Action:', {
             listingId: selectedListing,
             recipients: emails,

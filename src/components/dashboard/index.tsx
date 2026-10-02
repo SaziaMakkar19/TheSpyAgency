@@ -144,9 +144,11 @@ const Icons = {
 export default function Dashboard({
     user,
     children,
+    realtorData,
 }: {
     user: any
     children: React.ReactNode
+    realtorData: any
 }) {
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
     const [openNewCampaignModal, setOpenNewCampaignModal] = useState(false)
@@ -348,6 +350,7 @@ export default function Dashboard({
             {openNewCampaignModal && (
                 <NewCampaignModal
                     onClose={() => setOpenNewCampaignModal(false)}
+                    realtorData={realtorData}
                 />
             )}
         </div>

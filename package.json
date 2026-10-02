@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@floating-ui/react": "^0.27.19",
+    "@google/genai": "^2.21.0",
     "@headlessui/react": "^2.2.10",
     "@lucia-auth/adapter-drizzle": "^1.1.0",
     "@mapbox/mapbox-gl-geocoder": "^5.1.2",
