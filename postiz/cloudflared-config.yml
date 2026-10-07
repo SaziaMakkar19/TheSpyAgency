@@ -1,0 +1,25 @@
+# Cloudflare Tunnel configuration — exposes the local Postiz container
+# publicly as https://postiz.thespyagency.com (no router port forwarding).
+#
+# One-time setup:
+#   1. The thespyagency.com domain must use Cloudflare DNS (add the site to a
+#      free Cloudflare account; move nameservers if it isn't already).
+#   2. Install cloudflared on the gaming machine:
+#        winget install --id Cloudflare.cloudflared
+#   3. Authenticate:  cloudflared tunnel login
+#   4. Create tunnel: cloudflared tunnel create postiz
+#      (prints a Tunnel ID — put it below)
+#   5. Route DNS:     cloudflared tunnel route dns postiz postiz.thespyagency.com
+#   6. Save this file as C:\Users\<you>\.cloudflared\config.yml and run:
+#        cloudflared tunnel run postiz
+#      (or `cloudflared service install` to run it as a Windows service)
+#
+# X (Twitter) intentionally omitted — premium-tier future offering only.
+
+tunnel: <TUNNEL-ID>
+credentials-file: C:\Users\<you>\.cloudflared\<TUNNEL-ID>.json
+
+ingress:
+  - hostname: postiz.thespyagency.com
+    service: http://localhost:4007   # official compose maps host port 4007→5000
+  - service: http_status:404

@@ -1,0 +1,111 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+/* ── Luminous Real Estate AI tokens (merged from Stitch DESIGN.md) ──
+   Dark glassmorphism system for the Intel gallery & Remix Studio. */
+:root {
+  --lum-void: #0b0f17;
+  --lum-surface: #0f131c;
+  --lum-surface-low: #181c24;
+  --lum-surface-container: #1c2028;
+  --lum-surface-high: #262a33;
+  --lum-surface-highest: #31353e;
+  --lum-on-surface: #dfe2ee;
+  --lum-on-surface-variant: #cbc3d7;
+  --lum-outline: #958ea0;
+  --lum-outline-variant: #494454;
+  --lum-primary: #8b5cf6;
+  --lum-primary-bright: #a078ff;
+  --lum-primary-dim: #6d3bd7;
+  --lum-secondary: #6366f1;
+  --lum-tertiary: #10b981;
+  --lum-tertiary-bright: #4edea3;
+  --lum-error: #ffb4ab;
+  --lum-charcoal: #111827;
+  --lum-card: rgba(17, 24, 39, 0.7);
+  --lum-overlay: rgba(15, 23, 42, 0.85);
+  --lum-border-glass: rgba(255, 255, 255, 0.08);
+  --lum-border-glass-glow: rgba(139, 92, 246, 0.3);
+  --lum-text-primary: #f9fafb;
+  --lum-text-muted: #9ca3af;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+ /* Custom font families */
+  --font-display: "Outfit", sans-serif;
+  --font-body: "Inter", sans-serif;
+  --font-accent: "Space Grotesk", sans-serif;
+  /* Luminous type system */
+  --font-jakarta: "Plus Jakarta Sans", sans-serif;
+
+  /* Luminous color tokens (dark surfaces, violet/indigo primary, emerald trust) */
+  --color-lum-void: var(--lum-void);
+  --color-lum-surface: var(--lum-surface);
+  --color-lum-surface-low: var(--lum-surface-low);
+  --color-lum-container: var(--lum-surface-container);
+  --color-lum-high: var(--lum-surface-high);
+  --color-lum-highest: var(--lum-surface-highest);
+  --color-lum-on-surface: var(--lum-on-surface);
+  --color-lum-on-surface-variant: var(--lum-on-surface-variant);
+  --color-lum-outline: var(--lum-outline);
+  --color-lum-outline-variant: var(--lum-outline-variant);
+  --color-lum-primary: var(--lum-primary);
+  --color-lum-primary-bright: var(--lum-primary-bright);
+  --color-lum-primary-dim: var(--lum-primary-dim);
+  --color-lum-secondary: var(--lum-secondary);
+  --color-lum-tertiary: var(--lum-tertiary);
+  --color-lum-tertiary-bright: var(--lum-tertiary-bright);
+  --color-lum-error: var(--lum-error);
+  --color-lum-charcoal: var(--lum-charcoal);
+  --color-lum-card: var(--lum-card);
+  --color-lum-overlay: var(--lum-overlay);
+  --color-lum-border-glass: var(--lum-border-glass);
+  --color-lum-border-glow: var(--lum-border-glass-glow);
+  --color-lum-text-primary: var(--lum-text-primary);
+  --color-lum-text-muted: var(--lum-text-muted);
+}
+
+/* Reusable Luminous glass surfaces */
+@utility glass-card {
+  background: var(--lum-card);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--lum-border-glass);
+  border-radius: 1rem;
+}
+
+@utility glass-toolbar {
+  background: var(--lum-overlay);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px -4px rgba(99, 102, 241, 0.15);
+  border-radius: 0.75rem;
+}
+
+@utility lum-gradient-btn {
+  background: linear-gradient(to right, var(--lum-primary-bright), var(--lum-secondary));
+  color: var(--lum-text-primary);
+  border-radius: 0.75rem;
+  transition: all 0.2s ease;
+}
+.lum-gradient-btn:hover {
+  box-shadow: 0 0 24px rgba(139, 92, 246, 0.45);
+  transform: scale(1.02);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+}

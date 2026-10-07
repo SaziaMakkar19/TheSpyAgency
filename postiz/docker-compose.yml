@@ -1,0 +1,83 @@
+# The Spy Agency — self-hosted Postiz (postiz.thespyagency.com)
+#
+# Runs on the local gaming machine behind a Cloudflare Tunnel (no port
+# forwarding needed; the tunnel provides public HTTPS, required for the
+# social platform OAuth callbacks).
+#
+# SETUP ORDER:
+#   1. Install Docker Desktop on the machine, enable WSL2 backend.
+#   2. Copy .env.example → .env and fill in secrets + platform OAuth apps
+#      (register at developers.facebook.com, developers.tiktok.com,
+#       linkedin.com/developers, console.cloud.google.com).
+#   3. docker compose up -d
+#   4. Open http://localhost:5000 → create your admin account →
+#      Settings → get your API key (used by the Supabase dispatcher).
+#   5. Configure cloudflared (see cloudflared-config.yml) to expose
+#      postiz.thespyagency.com → localhost:5000.
+#
+# NOTE: verify env var names against the official Postiz self-hosting docs
+# (https://docs.postiz.com) — they evolve; only this file changes.
+
+services:
+  postiz:
+    image: ghcr.io/gitroomhq/postiz-app:latest
+    container_name: postiz
+    restart: always
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql://postiz:${POSTGRES_PASSWORD}@postiz-postgres:5432/postiz
+      REDIS_URL: redis://postiz-redis:6379
+      # Local testing phase: http://localhost:5000 (default).
+      # Cloud phase: set FRONTEND_URL=https://postiz.thespyagency.com in .env.
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5000}
+      MAIN_URL: ${FRONTEND_URL:-http://localhost:5000}
+      NEXT_PUBLIC_BACKEND_URL: ${FRONTEND_URL:-http://localhost:5000}/api
+      BACKEND_INTERNAL_URL: http://localhost:5000
+      PORT: 5000
+      STORAGE_PROVIDER: local
+      # Platform OAuth apps — see .env
+      FACEBOOK_APP_ID: ${FACEBOOK_APP_ID:-}
+      FACEBOOK_APP_SECRET: ${FACEBOOK_APP_SECRET:-}
+      TIKTOK_CLIENT_ID: ${TIKTOK_CLIENT_ID:-}
+      TIKTOK_CLIENT_SECRET: ${TIKTOK_CLIENT_SECRET:-}
+      LINKEDIN_CLIENT_ID: ${LINKEDIN_CLIENT_ID:-}
+      LINKEDIN_CLIENT_SECRET: ${LINKEDIN_CLIENT_SECRET:-}
+      YOUTUBE_CLIENT_ID: ${YOUTUBE_CLIENT_ID:-}
+      YOUTUBE_CLIENT_SECRET: ${YOUTUBE_CLIENT_SECRET:-}
+    volumes:
+      - postiz-uploads:/uploads
+    ports:
+      - "127.0.0.1:5000:5000"   # localhost only — cloudflared fronts it publicly
+    depends_on:
+      postiz-postgres:
+        condition: service_healthy
+      postiz-redis:
+        condition: service_started
+
+  postiz-postgres:
+    image: postgres:16-alpine
+    container_name: postiz-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postiz
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postiz
+    volumes:
+      - postiz-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postiz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  postiz-redis:
+    image: redis:7-alpine
+    container_name: postiz-redis
+    restart: always
+    volumes:
+      - postiz-redis:/data
+
+volumes:
+  postiz-uploads:
+  postiz-db:
+  postiz-redis:
