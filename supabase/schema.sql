@@ -305,6 +305,14 @@ create policy "social_accounts_owner_all" on public.social_accounts
   for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
 create policy "publish_jobs_owner_read" on public.publish_jobs
   for select using (auth.uid() = user_id);
+create policy "publish_results_owner_read" on public.publish_results
+  for select using (
+    exists (
+      select 1 from public.publish_jobs
+      where publish_jobs.id = publish_results.publish_job_id
+        and publish_jobs.user_id = auth.uid()
+    )
+  );
 
 -- ── Postiz migration (idempotent — for databases created before Postiz) ──
 -- Postiz is the sole launch posting provider.

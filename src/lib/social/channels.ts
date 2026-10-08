@@ -34,14 +34,15 @@ export async function getConnectedAccounts(
 }
 
 /**
- * Pull channels from the Postiz instance (GET /public/v1/channels) and
+ * Pull channels from the Postiz instance (GET /public/v1/integrations) and
  * upsert them into social_accounts for this user.
  *
  * Returns { added, total } or throws with a readable message.
  *
- * NOTE: confirm the response shape on your instance
- * (http://localhost:5000/api/docs) — the mapping below tolerates common
- * variants (id/type, id/provider, name/username/label).
+ * Route CONFIRMED 2026-10-08 against the self-hosted instance's Swagger
+ * (GET /api/docs → /api/docs-json): the public channel list is
+ * `/public/v1/integrations` (401 without key). `/public/v1/channels`
+ * does NOT exist in this build — it returns 404.
  */
 export async function syncChannelsFromPostiz(
   userId: string
@@ -49,10 +50,18 @@ export async function syncChannelsFromPostiz(
   const apiKey = process.env.POSTIZ_API_KEY;
   const base = process.env.POSTIZ_BASE_URL ?? "http://localhost:5000/api";
   if (!apiKey) {
+    if (process.env.NODE_ENV === "production") {
+      // Live site intentionally has no Postiz keys: the instance is on a LAN
+      // IP that Vercel cannot reach. Publishing unlocks with the cloud-hosted
+      // Postiz rollout (postiz.thespyagency.com).
+      throw new Error(
+        "Channel sync isn't enabled on the live site yet — it arrives with the cloud-hosted Postiz rollout. For now, connect channels on your local test site."
+      );
+    }
     throw new Error("POSTIZ_API_KEY is not set (server-side env).");
   }
 
-  const res = await fetch(`${base}/public/v1/channels`, {
+  const res = await fetch(`${base}/public/v1/integrations`, {
     headers: { Authorization: apiKey },
     cache: "no-store",
   });
@@ -63,25 +72,36 @@ export async function syncChannelsFromPostiz(
   const body = await res.json().catch(() => ({}));
   const channels: unknown[] = Array.isArray(body)
     ? body
-    : ((body as { channels?: unknown[] })?.channels ?? []);
+    : ((body as { channels?: unknown[] })?.channels ??
+      (body as { integrations?: unknown[] })?.integrations ??
+      []);
 
   const supabase = await getSupabaseServer();
   if (!supabase) throw new Error("Supabase is not configured.");
 
   // Existing refs for this user, so sync is idempotent
-  const { data: existing } = await supabase
+  const { data: existing, error: existingError } = await supabase
     .from("social_accounts")
     .select("external_ref")
     .eq("user_id", userId)
     .eq("provider", "postiz")
     .is("revoked_at", null);
+  if (existingError) {
+    throw new Error(`social_accounts lookup failed: ${existingError.message}`);
+  }
   const known = new Set((existing ?? []).map((r) => r.external_ref));
 
   let added = 0;
   for (const raw of channels) {
     const ch = raw as Record<string, unknown>;
     const ref = String(ch.id ?? ch.channelId ?? "");
-    const type = String(ch.type ?? ch.provider ?? ch.providerEnum ?? "");
+    // This Postiz build's /public/v1/integrations payload has NO type/provider
+    // field — the provider slug rides in `identifier` (verified 2026-10-08:
+    // identifier === "facebook" for the connected FB page). Keep the earlier
+    // keys first in case a newer Postiz build adds them back.
+    const type = String(
+      ch.type ?? ch.provider ?? ch.providerEnum ?? ch.identifier ?? ""
+    );
     const platform = normalizePlatform(type);
     if (!ref || !platform || known.has(ref)) continue;
 
@@ -96,7 +116,10 @@ export async function syncChannelsFromPostiz(
       account_label: label,
       external_ref: ref,
     });
-    if (!error) added++;
+    if (error) {
+      throw new Error(`Couldn't save channel "${label}": ${error.message}`);
+    }
+    added++;
   }
 
   return { added, total: channels.length };
