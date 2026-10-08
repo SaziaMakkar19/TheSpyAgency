@@ -56,6 +56,7 @@ export default async function DossierPage({
                 aspect={post.aspectRatio}
                 label={post.address}
                 price={post.price}
+                src={post.imageUrl}
                 className="!rounded-none"
               />
               <div className="p-5 space-y-3">

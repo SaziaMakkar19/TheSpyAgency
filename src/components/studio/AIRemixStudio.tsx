@@ -8,8 +8,10 @@ import {
   type Post,
 } from "@/lib/data/posts";
 import { getSupabaseBrowser } from "@/lib/supabase/client";
+import { DEFAULT_GENERATION_PROVIDER } from "@/lib/generation/providers";
 import { PromptInput } from "./PromptInput";
 import { StylePresetSelector } from "./StylePresetSelector";
+import { ModelProviderSelector } from "./ModelProviderSelector";
 
 interface AIRemixStudioProps {
   sourcePost?: Post | null;
@@ -40,6 +42,7 @@ export function AIRemixStudio({ sourcePost }: AIRemixStudioProps) {
     "Twilight golden hour atmosphere, cinematic blue & amber volumetric haze, subtle architectural uplighting"
   );
   const [preset, setPreset] = useState(post.stylePreset);
+  const [provider, setProvider] = useState(DEFAULT_GENERATION_PROVIDER);
   const [aspect, setAspect] = useState<string>(post.aspectRatio);
   const [blend, setBlend] = useState(65);
   const [infusion, setInfusion] = useState(75);
@@ -66,6 +69,7 @@ export function AIRemixStudio({ sourcePost }: AIRemixStudioProps) {
           prompt: basePrompt,
           co_op_modifier: coOpModifier,
           style_preset: preset,
+          provider,
           aspect_ratio: aspect,
           headline,
           status: "queued",
@@ -206,6 +210,8 @@ export function AIRemixStudio({ sourcePost }: AIRemixStudioProps) {
               />
             </label>
           </div>
+
+          <ModelProviderSelector selected={provider} onChange={setProvider} />
 
           <StylePresetSelector
             presets={STYLE_PRESETS}

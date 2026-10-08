@@ -36,6 +36,10 @@ yarn-error.log*
 # vercel
 .vercel
 
+# local-only tooling (supabase CLI binary downloaded for `functions serve`)
+supabase.exe
+supabase
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

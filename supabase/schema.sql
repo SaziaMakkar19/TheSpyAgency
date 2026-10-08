@@ -57,6 +57,9 @@ create table if not exists public.posts (
   price        numeric(14,2),
   address      text,
   listing_no   text,
+  image_url    text,                             -- real render in Supabase Storage
+  agent_name   text,                             -- directory attribution
+  brokerage    text,
   is_pro_only  boolean not null default false,     -- prompt copy gated for Pro
   published    boolean not null default true,
   likes_count  integer not null default 0,
@@ -85,11 +88,14 @@ create table if not exists public.remixes (
   prompt         text not null,
   co_op_modifier text,                             -- co-op layer prompt (locked)
   style_preset   text not null default 'Cinematic Luxury',
+  provider       text not null default 'ideogram',   -- AI model chosen in the Remix Studio
   aspect_ratio   text not null default '4:5',
   headline       text,                             -- editable agent layer
   locked_geometry boolean not null default true,   -- MLS Master Geometry layer
   status         text not null default 'draft' check (status in ('draft','queued','rendering','published','failed')),
   credits_spent  integer not null default 0,
+  rendered_path  text,                             -- storage object of the finished render
+  last_error     text,                            -- failure reason when status='failed'
   created_at     timestamptz not null default now()
 );
 create index if not exists remixes_user_idx on public.remixes (user_id);
@@ -98,9 +104,17 @@ create index if not exists remixes_user_idx on public.remixes (user_id);
 create table if not exists public.campaigns (
   id          uuid primary key default uuid_generate_v4(),
   listing_no  text not null,
+  title       text not null default '',
   owner_id    uuid references public.profiles(id) on delete set null,
   status      text not null default 'open' check (status in ('draft','open','active','closed')),
   split_note  text,                                -- e.g. "50/50 Co-Op"
+  modifier_prompt text,                            -- locked co-op layer for every participant
+  style_preset text not null default 'Cinematic Luxury',
+  aspect_ratio text not null default '4:5',
+  invite_scope jsonb not null default '{}',        -- {brokerages:[], offices:[], markets:[]}
+  window_start timestamptz,                        -- co-op posting window
+  window_end   timestamptz,
+  stagger_minutes integer not null default 30,     -- slot spacing between participants
   created_at  timestamptz not null default now()
 );
 
@@ -108,7 +122,10 @@ create table if not exists public.campaign_participants (
   campaign_id uuid not null references public.campaigns(id) on delete cascade,
   user_id     uuid not null references public.profiles(id) on delete cascade,
   claimed_template_id uuid,
-  scheduled_at timestamptz,
+  remix_id    uuid references public.remixes(id) on delete set null,
+  variation_note text,                             -- unique angle claim (cross-check before render)
+  platform    text not null default 'instagram',   -- connected channel the render publishes to
+  scheduled_at timestamptz,                        -- this agent's staggered slot
   primary key (campaign_id, user_id)
 );
 
@@ -135,6 +152,23 @@ create policy "remixes_owner_all" on public.remixes
 create policy "profiles_public_read" on public.profiles for select using (true);
 create policy "profiles_owner_update" on public.profiles
   for update using (auth.uid() = id) with check (auth.uid() = id);
+
+-- Campaigns: open co-ops are browsable by anyone (drives registration);
+-- only the listing agent creates or manages their own.
+alter table public.campaigns enable row level security;
+alter table public.campaign_participants enable row level security;
+
+create policy "campaigns_public_read" on public.campaigns
+  for select using (status <> 'draft' or auth.uid() = owner_id);
+create policy "campaigns_owner_insert" on public.campaigns
+  for insert with check (auth.uid() = owner_id);
+create policy "campaigns_owner_update" on public.campaigns
+  for update using (auth.uid() = owner_id);
+
+create policy "participants_public_read" on public.campaign_participants
+  for select using (true);
+create policy "participants_self_insert" on public.campaign_participants
+  for insert with check (auth.uid() = user_id);
 
 -- ── Storage bucket for listing renders ──────────────────────────────
 insert into storage.buckets (id, name, public)
@@ -295,3 +329,11 @@ drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function public.handle_new_user();
+
+-- ── Storage: public bucket for AI post renders ───────────────────────
+-- The generation-handler uploads renders here; /intel reads the public URL.
+-- Public read = anyone can view gallery renders (the site is browsable
+-- without registration); writes are service-role only (the edge function).
+insert into storage.buckets (id, name, public)
+values ('post-renders', 'post-renders', true)
+on conflict (id) do nothing;

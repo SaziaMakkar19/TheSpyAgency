@@ -22,6 +22,8 @@ export interface Post {
   likesCount: number;
   remixCount: number;
   gradientSeed: number; // deterministic placeholder hue
+  /** Real render URL (Supabase Storage) — when set, replaces the gradient placeholder. */
+  imageUrl?: string;
   createdAt: string;
 }
 
@@ -263,6 +265,7 @@ export async function getPosts(): Promise<Post[]> {
     likesCount: row.likes_count ?? 0,
     remixCount: row.remix_count ?? 0,
     gradientSeed: 0,
+    imageUrl: row.image_url ?? undefined,
     createdAt: row.created_at,
   }));
 }
