@@ -22,7 +22,7 @@ export function ParticipatingCompanies() {
             as="h2"
             className="text-center mb-0.5 text-custom-black text-xl md:text-2xl lg:leading-[1.4] lg:text-[32px] font-bold"
           >
-            Trusted Companies
+            Active Co-Op Networks
           </Title>
           <Scratch className="lg:w-[370px] w-[264px] lg:mt-2 h-1.5 lg:h-2 mx-auto" />
         </Box>
