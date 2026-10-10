@@ -2,20 +2,28 @@
  * Bridge Interactive (Data Output) API client — GVR VOW listing lookup for
  * the homepage lead magnet.
  *
- * API shape (verified 2026-10-10):
- *   Base:   https://api.bridgedataoutput.com/api/v2/OData/{dataset}
+ * API shape (VERIFIED 2026-10-10 against the live bcres dataset):
+ *   Base:   https://api.bridgedataoutput.com/api/v2/OData/bcres
  *   Auth:   ?access_token=SERVER_TOKEN  (query param, per the API's own
  *           "Invalid access_token format" error)
- *   Entity: /Property (listings), /Member (agents), OData $filter/$expand
+ *   Entity: /Property (listings), /Member (agents), /Office (brokerages)
+ *
+ * Dataset-specific facts that differ from RESO "standard" guesses and are
+ * pinned here deliberately:
+ *   - MLS number field is `ListingId` (e.g. 'R3173189'); `MlsNumber` does
+ *     NOT exist ("Cannot find property 'MlsNumber'").
+ *   - Address field is `UnparsedAddress`; `UnformattedAddress`/`StreetAddress`
+ *     do NOT exist.
+ *   - `$expand` is NOT supported ("Invalid field in $expand parameter") —
+ *     agent and office data require separate two-step lookups by key.
+ *   - Closed sales have `MlsStatus eq 'Closed'` (not 'Sold').
+ *   - Media photos: `Media` array, filter MediaCategory eq 'Photo', sort by
+ *     `Order`, use `MediaURL`.
+ *   - No DaysOnMarket field: DOM is computed from `ListingContractDate`.
  *
  * DEMO MODE: when BRIDGE_API_KEY is absent, a sample listing is returned so
  * the entire flow (scan → PDF → success state) is testable before the real
  * token lands in .env.local / Vercel.
- *
- * ⚠ FIELD MAPPING PARTIALLY VERIFIED: entity names and auth are confirmed;
- * individual property field names (ListPrice, BedroomsTotal, …) follow
- * Bridge's standard OData schema but should be sanity-checked against one
- * real (redacted) response — see normalizeBridgeListing().
  */
 
 export interface PriceHistoryEvent {
@@ -115,56 +123,115 @@ function looksLikeMls(q: string): boolean {
 }
 
 /**
- * Normalize a Bridge OData Property record into ListingBrief.
- * Member data may arrive nested via $expand=Member (object or array).
- * ⚠ Verify field names against one real response when the token lands.
+ * Normalize a Bridge bcres Property record into ListingBrief.
+ * Agent (Member) and brokerage (Office) records arrive from separate lookups
+ * and are passed in — verified that this dataset does not support $expand.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function normalizeBridgeListing(raw: any): ListingBrief {
+export function normalizeBridgeListing(raw: any, member: any = {}, officeName: string | null = null): ListingBrief {
+  // UnparsedAddress carries "STREET, City BC Postal" — keep the street
+  // portion for `address`; `city` comes from the dedicated City field.
+  const fullAddress: string = raw.UnparsedAddress ?? '';
+  const street = fullAddress.split(',')[0]?.trim() ?? fullAddress;
+
+  // Photos: Media array sorted by Order, photos only.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const member: any = Array.isArray(raw?.Member) ? raw.Member[0] : raw?.Member ?? {};
-  const media = Array.isArray(raw?.Media) ? raw.Media[0] : raw?.Media ?? null;
+  const photos: any[] = (Array.isArray(raw?.Media) ? raw.Media : [])
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((m: any) => m?.MediaCategory === 'Photo' && m?.MediaURL)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .sort((a: any, b: any) => (a?.Order ?? 0) - (b?.Order ?? 0));
+
+  // Days on market: no DOM field in this dataset — compute from the
+  // ListingContractDate (the day it went on market).
+  let daysOnMarket = 0;
+  if (raw.ListingContractDate) {
+    const listed = new Date(raw.ListingContractDate).getTime();
+    if (!Number.isNaN(listed)) {
+      daysOnMarket = Math.max(0, Math.floor((Date.now() - listed) / 86400000));
+    }
+  }
+
+  // Real price history only: the listing event (with its contract date) and
+  // the original list price when it differs from today's. No invented dates.
+  const priceHistory: PriceHistoryEvent[] = [];
+  const listDate = raw.ListingContractDate ? String(raw.ListingContractDate).slice(0, 10) : null;
+  if (listDate && raw.ListPrice) {
+    priceHistory.push({ date: listDate, event: 'Listed', price: Number(raw.ListPrice) });
+  }
+  if (listDate && raw.OriginalListPrice && Number(raw.OriginalListPrice) !== Number(raw.ListPrice ?? 0)) {
+    priceHistory.push({ date: listDate, event: 'Original list price', price: Number(raw.OriginalListPrice) });
+  }
 
   return {
-    mlsNo: raw.MlsNumber ?? raw.mlsNumber ?? '',
-    address:
-      raw.UnparsedAddress ?? // RESO standard field name
-      raw.UnformattedAddress ??
-      raw.StreetAddress ??
-      raw.address ??
-      '',
-    city: raw.City ?? raw.city ?? '',
-    price: Number(raw.ListPrice ?? raw.listPrice ?? raw.price ?? 0),
-    beds: Number(raw.BedroomsTotal ?? raw.bedrooms ?? 0),
-    baths: Number(raw.BathroomsTotalInteger ?? raw.BathroomsTotal ?? raw.bathrooms ?? 0),
+    mlsNo: raw.ListingId ?? '',
+    address: street,
+    city: raw.City ?? '',
+    price: Number(raw.ListPrice ?? 0),
+    beds: Number(raw.BedroomsTotal ?? 0),
+    baths: Number(raw.BathroomsTotalInteger ?? 0),
     interiorSqft: raw.LivingArea ? Number(raw.LivingArea) : null,
     lotSqft: raw.LotSizeSquareFeet ? Number(raw.LotSizeSquareFeet) : null,
     yearBuilt: raw.YearBuilt ? Number(raw.YearBuilt) : null,
-    propertyType: raw.PropertyType ?? raw.PropertySubType ?? '—',
-    daysOnMarket: Number(raw.DaysOnMarket ?? raw.daysOnMarket ?? 0),
-    status: raw.StandardStatus ?? raw.MlsStatus ?? raw.status ?? 'Active',
-    photoUrl:
-      raw.PhotoURI ??
-      media?.ResourceUri ??
-      raw.MediaURL ??
-      (Array.isArray(raw.Photos) && raw.Photos.length > 0
-        ? raw.Photos[0].Uri ?? raw.Photos[0].MediaURL ?? raw.Photos[0]
-        : null),
-    // Intentionally empty from the primary lookup: price history and comps
-    // require separate, real queries (lookupComps) — never invented.
-    priceHistory: [],
+    propertyType: raw.PropertySubType ?? raw.PropertyType ?? '—',
+    daysOnMarket,
+    status: raw.MlsStatus ?? raw.StandardStatus ?? 'Active',
+    photoUrl: photos[0]?.MediaURL ?? null,
+    priceHistory,
     comps: [],
     marketHeat: null,
     agentName:
-      member.MemberFullName ??
-      raw.ListAgentFullName ??
-      [member.MemberFirstName, member.MemberLastName].filter(Boolean).join(' ') ??
+      member?.MemberFullName ??
+      [member?.MemberFirstName, member?.MemberLastName].filter(Boolean).join(' ') ??
       '',
-    agentEmail: member.MemberEmail ?? raw.ListAgentEmail ?? '',
-    agentPhone:
-      member.MemberPreferredPhone ?? raw.ListAgentPreferredPhone ?? raw.ListAgentOfficePhone ?? null,
-    brokerage: raw.ListOfficeName ?? member.OfficeName ?? null,
+    agentEmail: member?.MemberEmail ?? '',
+    agentPhone: member?.MemberPreferredPhone ?? null,
+    brokerage: officeName,
   };
+}
+
+/** Fetch the listing agent (Member) record by key — verified two-step shape. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchMember(base: string, token: string, memberKey: string): Promise<any | null> {
+  try {
+    const res = await fetch(
+      `${base}/Member?access_token=${encodeURIComponent(token)}&$top=1` +
+        `&$filter=${encodeURIComponent(`MemberKey eq '${odataEscape(memberKey)}'`)}`,
+      { headers: { Accept: 'application/json' }, cache: 'no-store' }
+    );
+    if (!res.ok) {
+      console.warn('Member lookup failed:', res.status);
+      return null;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await res.json();
+    return data?.value?.[0] ?? null;
+  } catch (err) {
+    console.warn('Member lookup error:', err);
+    return null;
+  }
+}
+
+/** Fetch a brokerage display name (OfficeName) by OfficeMlsId. */
+async function fetchOfficeName(base: string, token: string, officeMlsId: string): Promise<string | null> {
+  try {
+    const res = await fetch(
+      `${base}/Office?access_token=${encodeURIComponent(token)}&$top=1` +
+        `&$filter=${encodeURIComponent(`OfficeMlsId eq '${odataEscape(officeMlsId)}'`)}` +
+        `&$select=${encodeURIComponent('OfficeName')}`,
+      { headers: { Accept: 'application/json' }, cache: 'no-store' }
+    );
+    if (!res.ok) {
+      console.warn('Office lookup failed:', res.status);
+      return null;
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await res.json();
+    return data?.value?.[0]?.OfficeName ?? null;
+  } catch (err) {
+    console.warn('Office lookup error:', err);
+    return null;
+  }
 }
 
 /**
@@ -185,39 +252,35 @@ export async function lookupListing(query: string): Promise<ListingBrief> {
   const token = process.env.BRIDGE_API_KEY as string;
 
   const filter = looksLikeMls(q)
-    ? `MlsNumber eq '${odataEscape(q)}'`
-    : `(contains(UnformattedAddress,'${odataEscape(q)}') or contains(StreetAddress,'${odataEscape(q)}'))`;
+    ? `ListingId eq '${odataEscape(q)}'` // verified field name in bcres
+    : `contains(UnparsedAddress,'${odataEscape(q)}')`;
 
-  const buildUrl = (expand: boolean) =>
+  const res = await fetch(
     `${base}/Property?access_token=${encodeURIComponent(token)}&$top=3` +
-    `&$filter=${encodeURIComponent(filter)}` +
-    (expand ? `&$expand=${encodeURIComponent('Member')}` : '');
-
-  // First try with Member expanded (agent email lives on the Member entity);
-  // if the nav property name differs in this dataset, retry bare.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let data: any = null;
-  for (const expand of [true, false]) {
-    const res = await fetch(buildUrl(expand), {
-      headers: { Accept: 'application/json' },
-      cache: 'no-store',
-    });
-    if (res.status === 401 || res.status === 403) {
-      throw new Error(`Bridge auth failed (${res.status}) — check BRIDGE_API_KEY`);
-    }
-    if (res.ok) {
-      data = await res.json();
-      break;
-    }
-    if (!expand) throw new Error(`Bridge API error: ${res.status}`);
+      `&$filter=${encodeURIComponent(filter)}`,
+    { headers: { Accept: 'application/json' }, cache: 'no-store' }
+  );
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(`Bridge auth failed (${res.status}) — check BRIDGE_API_KEY`);
   }
+  if (!res.ok) throw new Error(`Bridge API error: ${res.status}`);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const data: any = await res.json();
   const record = data?.value?.[0];
-  if (!record || !record.MlsNumber) throw new ListingNotFoundError();
+  if (!record || !record.ListingId) throw new ListingNotFoundError();
 
-  const brief = normalizeBridgeListing(record);
+  // Enrich: agent (Member) + brokerage (Office) are separate entities here —
+  // $expand is not supported by this dataset (verified).
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [member, officeName] = await Promise.all([
+    record.ListAgentKey ? fetchMember(base, token, record.ListAgentKey) : Promise.resolve(null),
+    record.ListOfficeMlsId ? fetchOfficeName(base, token, record.ListOfficeMlsId) : Promise.resolve(null),
+  ]);
 
-  // Without the email there is no one to send the brief to — treat as not found.
+  const brief = normalizeBridgeListing(record, member, officeName);
+
+  // Without the email there is no one to send the brief to — log loudly.
   if (!brief.agentEmail) {
     console.warn('Bridge record had no agent email:', brief.mlsNo);
   }
@@ -230,29 +293,29 @@ export function getSampleListing(): ListingBrief {
 }
 
 /**
- * Fetch REAL comparable solds for a brief: same street (fallback: same
- * city), recently closed, most recent first. Returns [] when the dataset
- * yields nothing — the PDF then omits the section rather than fabricate.
- * ⚠ Status vocabulary varies per MLS dataset ('Sold' vs 'Closed'); the
- * filter tries both.
+ * Fetch REAL comparable solds for a brief: same street name (fallback: same
+ * city), most recent closings first. Returns [] when the dataset yields
+ * nothing — the PDF then omits the section rather than fabricate.
+ * Verified: closed sales in bcres carry MlsStatus eq 'Closed'.
  */
 export async function lookupComps(brief: ListingBrief): Promise<CompSale[]> {
   if (isDemoMode()) return [];
   const base = (process.env.BRIDGE_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
   const token = process.env.BRIDGE_API_KEY as string;
 
-  const street = brief.address.split(',')[0].trim();
-  const statusFilter =
-    `(MlsStatus eq 'Sold' or MlsStatus eq 'Closed' or StandardStatus eq 'Sold' or StandardStatus eq 'Closed')`;
-  const areaFilter = street
-    ? `contains(UnparsedAddress,'${odataEscape(street)}') or contains(UnformattedAddress,'${odataEscape(street)}')`
+  // Strip the street number so the comp search matches neighbours, not the
+  // subject itself: "38590 WESTWAY AVENUE" → "WESTWAY AVENUE".
+  const streetName = brief.address.replace(/^\d+\s+/, '').trim();
+  const statusFilter = `MlsStatus eq 'Closed'`;
+  const areaFilter = streetName
+    ? `contains(UnparsedAddress,'${odataEscape(streetName)}')`
     : `City eq '${odataEscape(brief.city)}'`;
 
   const url =
     `${base}/Property?access_token=${encodeURIComponent(token)}&$top=3` +
     `&$orderby=${encodeURIComponent('CloseDate desc')}` +
-    `&$filter=${encodeURIComponent(`${statusFilter} and (${areaFilter}) and MlsNumber ne '${odataEscape(brief.mlsNo)}'`)}` +
-    `&$select=${encodeURIComponent('UnparsedAddress,UnformattedAddress,ClosePrice,ListPrice,CloseDate')}`;
+    `&$filter=${encodeURIComponent(`${statusFilter} and (${areaFilter}) and ListingId ne '${odataEscape(brief.mlsNo)}'`)}` +
+    `&$select=${encodeURIComponent('UnparsedAddress,ClosePrice,CloseDate')}`;
 
   try {
     const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
@@ -268,7 +331,7 @@ export async function lookupComps(brief: ListingBrief): Promise<CompSale[]> {
       .filter((r: any) => r.ClosePrice && r.CloseDate)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       .map((r: any) => ({
-        address: r.UnparsedAddress ?? r.UnformattedAddress ?? '—',
+        address: r.UnparsedAddress?.split(',')[0]?.trim() ?? '—',
         price: Number(r.ClosePrice),
         soldDate: String(r.CloseDate).slice(0, 10),
         deltaPct:
