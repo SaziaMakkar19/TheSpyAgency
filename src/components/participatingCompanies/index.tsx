@@ -14,7 +14,7 @@ export function ParticipatingCompanies() {
     return (
          <Section
       id="trusted-partners"
-      className=" pt-16 bg-white lg:pt-[140px] py-4 lg:py-[70px] font-geist"
+      className=" pt-16 bg-slate-50 lg:pt-[140px] py-4 lg:py-[70px] font-geist"
     >
       <Container className="max-w-[120rem] md:px-8 3xl:px-40 px-4">
         <Box className="mb-7 lg:mb-16">
