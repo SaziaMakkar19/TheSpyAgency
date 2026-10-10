@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Section, Container, Box } from '@/components/layout/index';
 
 type Phase = 'idle' | 'scanning' | 'success' | 'notFound' | 'error';
+type Intent = 'owner' | 'inquiry' | null;
 
 const SCAN_LINES = [
   '> Authenticating with GVR Bridge API…',
@@ -15,10 +16,17 @@ const SCAN_LINES = [
 export function LeadMagnet() {
   const [phase, setPhase] = useState<Phase>('idle');
   const [query, setQuery] = useState('');
+  const [intent, setIntent] = useState<Intent>(null);
+  const [requesterEmail, setRequesterEmail] = useState('');
+  const [requesterName, setRequesterName] = useState('');
   const [agentName, setAgentName] = useState<string | null>(null);
   const [mlsNo, setMlsNo] = useState<string | null>(null);
+  const [leadAlertSent, setLeadAlertSent] = useState(false);
   const [scanLine, setScanLine] = useState(0);
   const [newsletter, setNewsletter] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  // Honeypot — invisible to humans; bots fill it and get silently ignored.
+  const [company, setCompany] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Advance the scanning status lines
@@ -30,30 +38,49 @@ export function LeadMagnet() {
     return () => clearInterval(t);
   }, [phase]);
 
+  const canSubmit =
+    query.trim().length >= 4 &&
+    intent !== null &&
+    (intent === 'owner' || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(requesterEmail.trim())) &&
+    phase !== 'scanning';
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const q = query.trim();
-    if (q.length < 4 || phase === 'scanning') return;
+    if (!canSubmit) return;
 
     setPhase('scanning');
     setScanLine(0);
     setNewsletter(false);
+    setErrorMsg(null);
 
     const minDisplay = new Promise((r) => setTimeout(r, 3400)); // let the scan read
     try {
-      const [res] = await Promise.all([fetch('/api/market-brief', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: q }),
-      }), minDisplay]);
+      const [res] = await Promise.all([
+        fetch('/api/market-brief', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: query.trim(),
+            intent,
+            requesterEmail: requesterEmail.trim() || undefined,
+            requesterName: requesterName.trim() || undefined,
+            company: company || undefined, // honeypot
+          }),
+        }),
+        minDisplay,
+      ]);
 
       const data = await res.json();
       if (res.ok && data.ok) {
         setAgentName(data.agentName ?? null);
         setMlsNo(data.mlsNo ?? null);
+        setLeadAlertSent(Boolean(data.leadAlertSent));
         setPhase('success');
       } else if (data.error === 'not_found') {
         setPhase('notFound');
+      } else if (res.status === 429) {
+        setErrorMsg('Too many scans in a short time — please try again in an hour.');
+        setPhase('error');
       } else {
         setPhase('error');
       }
@@ -80,8 +107,12 @@ export function LeadMagnet() {
   function reset() {
     setPhase('idle');
     setQuery('');
+    setIntent(null);
+    setRequesterEmail('');
+    setRequesterName('');
     setAgentName(null);
     setMlsNo(null);
+    setErrorMsg(null);
     inputRef.current?.focus();
   }
 
@@ -105,15 +136,26 @@ export function LeadMagnet() {
             Your listing, decoded.
           </h2>
           <p className="text-sm text-slate-400 max-w-xl mx-auto leading-relaxed">
-            Enter <strong className="text-slate-200">your listing&apos;s</strong> MLS number or
-            property address. We scan the GVR database and email your market brief to the address
-            on file — no forms, no friction, results in seconds.
+            Enter an MLS number or property address. We scan the GVR database and generate a
+            one-page tactical market brief in seconds — delivered straight to an inbox.
           </p>
         </Box>
 
         <Box className="mt-8">
           {phase === 'idle' || phase === 'scanning' ? (
             <form onSubmit={handleSubmit} className="space-y-3">
+              {/* Honeypot: hidden from humans, irresistible to bots */}
+              <input
+                type="text"
+                name="company"
+                value={company}
+                onChange={(e) => setCompany(e.target.value)}
+                tabIndex={-1}
+                autoComplete="off"
+                aria-hidden="true"
+                className="absolute -left-[9999px] top-auto h-0 w-0 opacity-0"
+              />
+
               <div className="flex flex-col sm:flex-row gap-2.5">
                 <input
                   ref={inputRef}
@@ -126,12 +168,66 @@ export function LeadMagnet() {
                 />
                 <button
                   type="submit"
-                  disabled={phase === 'scanning' || query.trim().length < 4}
-                  className="px-6 py-3.5 rounded-xl text-sm font-bold uppercase tracking-widest text-slate-950 bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-60 disabled:cursor-not-allowed whitespace-nowrap"
+                  disabled={!canSubmit}
+                  className="px-6 py-3.5 rounded-xl text-sm font-bold uppercase tracking-widest text-slate-950 bg-gradient-to-r from-emerald-400 to-cyan-400 hover:from-emerald-300 hover:to-cyan-300 transition-all shadow-lg shadow-emerald-500/20 disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {phase === 'scanning' ? 'Scanning…' : 'Scan the MLS'}
                 </button>
               </div>
+
+              {/* Intent gate — "checkboxes as captcha" + lead routing */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIntent('owner')}
+                  aria-pressed={intent === 'owner'}
+                  className={`flex-1 px-4 py-3 rounded-xl text-left text-xs border transition-all ${
+                    intent === 'owner'
+                      ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-300'
+                      : 'border-slate-700/60 bg-slate-900/60 text-slate-400 hover:border-slate-600'
+                  }`}
+                >
+                  <span className="font-semibold block">✓ This is my listing</span>
+                  <span className="text-[10px] opacity-70">
+                    Email the brief to me, the listing agent
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIntent('inquiry')}
+                  aria-pressed={intent === 'inquiry'}
+                  className={`flex-1 px-4 py-3 rounded-xl text-left text-xs border transition-all ${
+                    intent === 'inquiry'
+                      ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-300'
+                      : 'border-slate-700/60 bg-slate-900/60 text-slate-400 hover:border-slate-600'
+                  }`}
+                >
+                  <span className="font-semibold block">No, this is not my listing</span>
+                  <span className="text-[10px] opacity-70">
+                    I&apos;m interested in this property
+                  </span>
+                </button>
+              </div>
+
+              {/* Inquiry contact fields — revealed only when needed */}
+              {intent === 'inquiry' && (
+                <div className="grid sm:grid-cols-2 gap-2.5 animate-[fadeIn_0.25s_ease-out]">
+                  <input
+                    type="email"
+                    value={requesterEmail}
+                    onChange={(e) => setRequesterEmail(e.target.value)}
+                    placeholder="Your email (required — the brief comes here)"
+                    className="px-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/60 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+                  />
+                  <input
+                    type="text"
+                    value={requesterName}
+                    onChange={(e) => setRequesterName(e.target.value)}
+                    placeholder="Your name (optional)"
+                    className="px-4 py-3 rounded-xl bg-slate-900/80 border border-slate-700/60 text-sm text-slate-100 placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/60 focus:ring-1 focus:ring-emerald-500/30 transition-all"
+                  />
+                </div>
+              )}
 
               {/* Terminal-style scan output */}
               <div
@@ -171,11 +267,20 @@ export function LeadMagnet() {
               </div>
               <div className="space-y-1.5">
                 <p className="font-jakarta text-lg font-bold text-white">Brief en route.</p>
-                <p className="text-sm text-slate-300 max-w-md mx-auto">
-                  Check your inbox for the report — we&apos;ve emailed it to the address on file
-                  {agentName ? ` for ${agentName}` : ''}
-                  {mlsNo ? ` (MLS #${mlsNo})` : ''}.
-                </p>
+                {intent === 'inquiry' ? (
+                  <p className="text-sm text-slate-300 max-w-md mx-auto">
+                    Check your inbox for the report{mlsNo ? ` on MLS #${mlsNo}` : ''}.
+                    {leadAlertSent && agentName && (
+                      <> The listing agent ({agentName}) has been notified of your interest and may reach out.</>
+                    )}
+                  </p>
+                ) : (
+                  <p className="text-sm text-slate-300 max-w-md mx-auto">
+                    Check your inbox for the report — we&apos;ve emailed it to the address on file
+                    {agentName ? ` for ${agentName}` : ''}
+                    {mlsNo ? ` (MLS #${mlsNo})` : ''}.
+                  </p>
+                )}
                 <p className="text-xs text-slate-500">
                   While you wait:{' '}
                   <a
@@ -213,7 +318,7 @@ export function LeadMagnet() {
               <p className="text-sm text-slate-400 max-w-md mx-auto">
                 {phase === 'notFound'
                   ? 'Try an active MLS number or a full property address. The database only returns current VOW records.'
-                  : 'The scan hit an unexpected error. Please try again in a moment.'}
+                  : (errorMsg ?? 'The scan hit an unexpected error. Please try again in a moment.')}
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button
@@ -235,6 +340,7 @@ export function LeadMagnet() {
           )}
         </Box>
       </Container>
+      <style>{`@keyframes fadeIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }`}</style>
     </Section>
   );
 }
