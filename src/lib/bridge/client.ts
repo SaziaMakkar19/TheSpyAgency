@@ -1,14 +1,21 @@
 /**
- * Bridge API client — GVR VOW listing lookup for the homepage lead magnet.
+ * Bridge Interactive (Data Output) API client — GVR VOW listing lookup for
+ * the homepage lead magnet.
+ *
+ * API shape (verified 2026-10-10):
+ *   Base:   https://api.bridgedataoutput.com/api/v2/OData/{dataset}
+ *   Auth:   ?access_token=SERVER_TOKEN  (query param, per the API's own
+ *           "Invalid access_token format" error)
+ *   Entity: /Property (listings), /Member (agents), OData $filter/$expand
  *
  * DEMO MODE: when BRIDGE_API_KEY is absent, a sample listing is returned so
  * the entire flow (scan → PDF → success state) is testable before the real
- * credentials land in .env.local / Vercel.
+ * token lands in .env.local / Vercel.
  *
- * ⚠ CALIBRATION PENDING: the exact request path, query params and response
- * shape of this GVR Bridge account are account-specific. Adjust the
- * BRIDGE_* env vars and `normalizeBridgeListing()` once a real (redacted)
- * response sample is available from the provider.
+ * ⚠ FIELD MAPPING PARTIALLY VERIFIED: entity names and auth are confirmed;
+ * individual property field names (ListPrice, BedroomsTotal, …) follow
+ * Bridge's standard OData schema but should be sanity-checked against one
+ * real (redacted) response — see normalizeBridgeListing().
  */
 
 export interface PriceHistoryEvent {
@@ -85,42 +92,71 @@ const SAMPLE: ListingBrief = {
   brokerage: 'Sample Realty Group',
 };
 
+const DEFAULT_BASE_URL =
+  'https://api.bridgedataoutput.com/api/v2/OData/bcres';
+
 export function isDemoMode(): boolean {
   return !process.env.BRIDGE_API_KEY;
 }
 
+/** Escape a user-supplied string for safe inclusion in an OData filter. */
+function odataEscape(s: string): string {
+  return s.replace(/'/g, "''");
+}
+
+/** True when the query looks like an MLS number (e.g. R3009847). */
+function looksLikeMls(q: string): boolean {
+  return /^[A-Za-z]{1,3}\s?\d{5,8}$/.test(q.trim());
+}
+
 /**
- * Normalize a raw Bridge API record into ListingBrief.
- * ⚠ Field mapping is a BEST GUESS until a real response is inspected.
+ * Normalize a Bridge OData Property record into ListingBrief.
+ * Member data may arrive nested via $expand=Member (object or array).
+ * ⚠ Verify field names against one real response when the token lands.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function normalizeBridgeListing(raw: any): ListingBrief {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const member: any = Array.isArray(raw?.Member) ? raw.Member[0] : raw?.Member ?? {};
+  const media = Array.isArray(raw?.Media) ? raw.Media[0] : raw?.Media ?? null;
+
   return {
-    mlsNo: raw.MlsNumber ?? raw.mlsNumber ?? raw.mls_no ?? '',
-    address: raw.UnformattedAddress ?? raw.address ?? '',
+    mlsNo: raw.MlsNumber ?? raw.mlsNumber ?? '',
+    address: raw.UnformattedAddress ?? raw.StreetAddress ?? raw.address ?? '',
     city: raw.City ?? raw.city ?? '',
     price: Number(raw.ListPrice ?? raw.listPrice ?? raw.price ?? 0),
     beds: Number(raw.BedroomsTotal ?? raw.bedrooms ?? 0),
-    baths: Number(raw.BathroomsTotalInteger ?? raw.bathrooms ?? 0),
+    baths: Number(raw.BathroomsTotalInteger ?? raw.BathroomsTotal ?? raw.bathrooms ?? 0),
     interiorSqft: raw.LivingArea ? Number(raw.LivingArea) : null,
     lotSqft: raw.LotSizeSquareFeet ? Number(raw.LotSizeSquareFeet) : null,
     yearBuilt: raw.YearBuilt ? Number(raw.YearBuilt) : null,
-    propertyType: raw.PropertyType ?? raw.propertyType ?? '—',
+    propertyType: raw.PropertyType ?? raw.PropertySubType ?? '—',
     daysOnMarket: Number(raw.DaysOnMarket ?? raw.daysOnMarket ?? 0),
-    status: raw.StandardStatus ?? raw.status ?? 'Active',
-    photoUrl: raw.PhotoURI ?? raw.photoUrl ?? raw.photo ?? null,
+    status: raw.StandardStatus ?? raw.MlsStatus ?? raw.status ?? 'Active',
+    photoUrl:
+      raw.PhotoURI ??
+      media?.ResourceUri ??
+      raw.MediaURL ??
+      (Array.isArray(raw.Photos) && raw.Photos.length > 0
+        ? raw.Photos[0].Uri ?? raw.Photos[0]
+        : null),
     priceHistory: Array.isArray(raw.priceHistory) ? raw.priceHistory : [],
     comps: Array.isArray(raw.comps) ? raw.comps : [],
     marketHeat: 50,
-    agentName: raw.ListAgentFullName ?? raw.agentName ?? '',
-    agentEmail: raw.ListAgentEmail ?? raw.agentEmail ?? '',
-    agentPhone: raw.ListAgentPreferredPhone ?? raw.agentPhone ?? null,
-    brokerage: raw.ListOfficeName ?? raw.brokerage ?? null,
+    agentName:
+      member.MemberFullName ??
+      raw.ListAgentFullName ??
+      [member.MemberFirstName, member.MemberLastName].filter(Boolean).join(' ') ??
+      '',
+    agentEmail: member.MemberEmail ?? raw.ListAgentEmail ?? '',
+    agentPhone:
+      member.MemberPreferredPhone ?? raw.ListAgentPreferredPhone ?? raw.ListAgentOfficePhone ?? null,
+    brokerage: raw.ListOfficeName ?? member.OfficeName ?? null,
   };
 }
 
 /**
- * Look up a listing by MLS number or street address.
+ * Look up a listing by MLS number or street address via Bridge OData.
  * Demo mode returns the sample record for any non-empty query.
  */
 export async function lookupListing(query: string): Promise<ListingBrief> {
@@ -130,31 +166,50 @@ export async function lookupListing(query: string): Promise<ListingBrief> {
   if (isDemoMode()) {
     // Simulate network + render latency so the scanning animation reads.
     await new Promise((r) => setTimeout(r, 1200));
-    return { ...SAMPLE, mlsNo: /^[a-z]/i.test(q[0]) && /\d/.test(q) ? q.toUpperCase() : SAMPLE.mlsNo };
+    return { ...SAMPLE };
   }
 
-  const base = (process.env.BRIDGE_BASE_URL || '').replace(/\/$/, '');
-  const path = process.env.BRIDGE_SEARCH_PATH || '/search';
-  const url = `${base}${path}?q=${encodeURIComponent(q)}`;
+  const base = (process.env.BRIDGE_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
+  const token = process.env.BRIDGE_API_KEY as string;
 
-  const res = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${process.env.BRIDGE_API_KEY}`,
-      Accept: 'application/json',
-    },
-    cache: 'no-store',
-  });
+  const filter = looksLikeMls(q)
+    ? `MlsNumber eq '${odataEscape(q)}'`
+    : `(contains(UnformattedAddress,'${odataEscape(q)}') or contains(StreetAddress,'${odataEscape(q)}'))`;
 
-  if (res.status === 404) throw new ListingNotFoundError();
-  if (!res.ok) throw new Error(`Bridge API error: ${res.status}`);
+  const buildUrl = (expand: boolean) =>
+    `${base}/Property?access_token=${encodeURIComponent(token)}&$top=3` +
+    `&$filter=${encodeURIComponent(filter)}` +
+    (expand ? `&$expand=${encodeURIComponent('Member')}` : '');
 
+  // First try with Member expanded (agent email lives on the Member entity);
+  // if the nav property name differs in this dataset, retry bare.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const data: any = await res.json();
-  const record = Array.isArray(data) ? data[0] : data?.value?.[0] ?? data?.results?.[0] ?? data;
-  if (!record || !(record.MlsNumber ?? record.mlsNumber ?? record.mls_no)) {
-    throw new ListingNotFoundError();
+  let data: any = null;
+  for (const expand of [true, false]) {
+    const res = await fetch(buildUrl(expand), {
+      headers: { Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (res.status === 401 || res.status === 403) {
+      throw new Error(`Bridge auth failed (${res.status}) — check BRIDGE_API_KEY`);
+    }
+    if (res.ok) {
+      data = await res.json();
+      break;
+    }
+    if (!expand) throw new Error(`Bridge API error: ${res.status}`);
   }
-  return normalizeBridgeListing(record);
+
+  const record = data?.value?.[0];
+  if (!record || !record.MlsNumber) throw new ListingNotFoundError();
+
+  const brief = normalizeBridgeListing(record);
+
+  // Without the email there is no one to send the brief to — treat as not found.
+  if (!brief.agentEmail) {
+    console.warn('Bridge record had no agent email:', brief.mlsNo);
+  }
+  return brief;
 }
 
 /** Sample brief (powers the "view a sample report" link). */
