@@ -11,7 +11,7 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    const pdf = await renderBriefPdf(getSampleListing());
+    const pdf = await renderBriefPdf(getSampleListing(), { sample: true });
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
         'Content-Type': 'application/pdf',

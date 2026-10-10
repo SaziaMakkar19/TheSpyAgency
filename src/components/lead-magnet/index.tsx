@@ -21,6 +21,8 @@ export function LeadMagnet() {
   const [requesterName, setRequesterName] = useState('');
   const [agentName, setAgentName] = useState<string | null>(null);
   const [mlsNo, setMlsNo] = useState<string | null>(null);
+  const [reportUrl, setReportUrl] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState(false);
   const [leadAlertSent, setLeadAlertSent] = useState(false);
   const [scanLine, setScanLine] = useState(0);
   const [newsletter, setNewsletter] = useState(false);
@@ -74,6 +76,8 @@ export function LeadMagnet() {
       if (res.ok && data.ok) {
         setAgentName(data.agentName ?? null);
         setMlsNo(data.mlsNo ?? null);
+        setReportUrl(data.reportUrl ?? null);
+        setIsDemo(Boolean(data.demo));
         setLeadAlertSent(Boolean(data.leadAlertSent));
         setPhase('success');
       } else if (data.error === 'not_found') {
@@ -112,6 +116,8 @@ export function LeadMagnet() {
     setRequesterName('');
     setAgentName(null);
     setMlsNo(null);
+    setReportUrl(null);
+    setIsDemo(false);
     setErrorMsg(null);
     inputRef.current?.focus();
   }
@@ -282,6 +288,19 @@ export function LeadMagnet() {
                   </p>
                 )}
                 <p className="text-xs text-slate-500">
+                  {reportUrl ? (
+                    <>
+                      <a
+                        href={reportUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-emerald-400 hover:text-emerald-300 underline underline-offset-2"
+                      >
+                        View your report
+                      </a>
+                      {' · '}
+                    </>
+                  ) : null}
                   While you wait:{' '}
                   <a
                     href="/api/market-brief/sample"
@@ -293,6 +312,12 @@ export function LeadMagnet() {
                   </a>
                   .
                 </p>
+                {isDemo && (
+                  <p className="text-[10px] text-amber-400/80">
+                    Demo mode — this report uses sample data. Add the Bridge Server Token
+                    (BRIDGE_API_KEY) for live MLS data.
+                  </p>
+                )}
               </div>
               <div className="pt-1 flex flex-col sm:flex-row items-center justify-center gap-3">
                 <button

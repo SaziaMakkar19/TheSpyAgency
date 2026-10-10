@@ -23,10 +23,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   lookupListing,
+  lookupComps,
+  computeMarketHeat,
   isDemoMode,
   ListingNotFoundError,
 } from '@/lib/bridge/client';
 import { renderBriefPdf } from '@/lib/market-brief/render';
+import { storeBriefPdf } from '@/lib/market-brief/store';
 import { isEmailConfigured, sendBriefEmail, sendLeadAlertEmail } from '@/lib/email/send';
 import { getSupabaseAdmin } from '@/lib/supabase/admin';
 
@@ -125,7 +128,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'upstream' }, { status: 502 });
   }
 
-  // 2. Render the PDF
+  // 2. Real comps + honest heat (live mode only; demo sample keeps its
+  //    clearly-labeled fictional illustration data)
+  if (!isDemoMode()) {
+    brief.comps = await lookupComps(brief);
+    brief.marketHeat = computeMarketHeat(brief); // null until real inputs suffice
+  }
+
+  // 3. Render the PDF
   let pdf: Buffer;
   try {
     pdf = await renderBriefPdf(brief);
@@ -134,7 +144,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: 'render_failed' }, { status: 500 });
   }
 
-  // 3. Record the lead (never fail the request over logging)
+  // 3b. Persist the report so it stays retrievable (Storage bucket is a
+  //     setup step — gracefully skipped with a warning if missing)
+  const reportUrl = await storeBriefPdf(brief.mlsNo, pdf);
+
+  // 4. Record the lead (never fail the request over logging)
   if (supabase) {
     const { error } = await supabase.from('leads').insert({
       mls_no: brief.mlsNo,
@@ -243,6 +257,7 @@ export async function POST(req: NextRequest) {
     leadAlertSent,
     agentName: brief.agentName,
     mlsNo: brief.mlsNo,
+    reportUrl,
     sampleUrl: '/api/market-brief/sample',
   });
 }

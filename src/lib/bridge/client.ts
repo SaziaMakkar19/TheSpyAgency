@@ -47,7 +47,12 @@ export interface ListingBrief {
   photoUrl: string | null;
   priceHistory: PriceHistoryEvent[];
   comps: CompSale[];
-  marketHeat: number; // 0–100
+  /**
+   * Demand indicator 0–100. ONLY ever set from real, documented inputs
+   * (currently: days-on-market vs. comparable solds). Null = not computed,
+   * and the PDF omits the section rather than fabricate a number.
+   */
+  marketHeat: number | null;
   agentName: string;
   agentEmail: string;
   agentPhone: string | null;
@@ -122,7 +127,12 @@ export function normalizeBridgeListing(raw: any): ListingBrief {
 
   return {
     mlsNo: raw.MlsNumber ?? raw.mlsNumber ?? '',
-    address: raw.UnformattedAddress ?? raw.StreetAddress ?? raw.address ?? '',
+    address:
+      raw.UnparsedAddress ?? // RESO standard field name
+      raw.UnformattedAddress ??
+      raw.StreetAddress ??
+      raw.address ??
+      '',
     city: raw.City ?? raw.city ?? '',
     price: Number(raw.ListPrice ?? raw.listPrice ?? raw.price ?? 0),
     beds: Number(raw.BedroomsTotal ?? raw.bedrooms ?? 0),
@@ -138,11 +148,13 @@ export function normalizeBridgeListing(raw: any): ListingBrief {
       media?.ResourceUri ??
       raw.MediaURL ??
       (Array.isArray(raw.Photos) && raw.Photos.length > 0
-        ? raw.Photos[0].Uri ?? raw.Photos[0]
+        ? raw.Photos[0].Uri ?? raw.Photos[0].MediaURL ?? raw.Photos[0]
         : null),
-    priceHistory: Array.isArray(raw.priceHistory) ? raw.priceHistory : [],
-    comps: Array.isArray(raw.comps) ? raw.comps : [],
-    marketHeat: 50,
+    // Intentionally empty from the primary lookup: price history and comps
+    // require separate, real queries (lookupComps) — never invented.
+    priceHistory: [],
+    comps: [],
+    marketHeat: null,
     agentName:
       member.MemberFullName ??
       raw.ListAgentFullName ??
@@ -215,4 +227,68 @@ export async function lookupListing(query: string): Promise<ListingBrief> {
 /** Sample brief (powers the "view a sample report" link). */
 export function getSampleListing(): ListingBrief {
   return SAMPLE;
+}
+
+/**
+ * Fetch REAL comparable solds for a brief: same street (fallback: same
+ * city), recently closed, most recent first. Returns [] when the dataset
+ * yields nothing — the PDF then omits the section rather than fabricate.
+ * ⚠ Status vocabulary varies per MLS dataset ('Sold' vs 'Closed'); the
+ * filter tries both.
+ */
+export async function lookupComps(brief: ListingBrief): Promise<CompSale[]> {
+  if (isDemoMode()) return [];
+  const base = (process.env.BRIDGE_BASE_URL || DEFAULT_BASE_URL).replace(/\/$/, '');
+  const token = process.env.BRIDGE_API_KEY as string;
+
+  const street = brief.address.split(',')[0].trim();
+  const statusFilter =
+    `(MlsStatus eq 'Sold' or MlsStatus eq 'Closed' or StandardStatus eq 'Sold' or StandardStatus eq 'Closed')`;
+  const areaFilter = street
+    ? `contains(UnparsedAddress,'${odataEscape(street)}') or contains(UnformattedAddress,'${odataEscape(street)}')`
+    : `City eq '${odataEscape(brief.city)}'`;
+
+  const url =
+    `${base}/Property?access_token=${encodeURIComponent(token)}&$top=3` +
+    `&$orderby=${encodeURIComponent('CloseDate desc')}` +
+    `&$filter=${encodeURIComponent(`${statusFilter} and (${areaFilter}) and MlsNumber ne '${odataEscape(brief.mlsNo)}'`)}` +
+    `&$select=${encodeURIComponent('UnparsedAddress,UnformattedAddress,ClosePrice,ListPrice,CloseDate')}`;
+
+  try {
+    const res = await fetch(url, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+    if (!res.ok) {
+      console.warn('Comps query failed:', res.status);
+      return [];
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data: any = await res.json();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data?.value ?? [])
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .filter((r: any) => r.ClosePrice && r.CloseDate)
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      .map((r: any) => ({
+        address: r.UnparsedAddress ?? r.UnformattedAddress ?? '—',
+        price: Number(r.ClosePrice),
+        soldDate: String(r.CloseDate).slice(0, 10),
+        deltaPct:
+          brief.price > 0
+            ? Math.round(((Number(r.ClosePrice) - brief.price) / brief.price) * 1000) / 10
+            : 0,
+      }));
+  } catch (err) {
+    console.warn('Comps query error:', err);
+    return [];
+  }
+}
+
+/**
+ * Demand indicator derived ONLY from real inputs currently in hand:
+ * days-on-market, benchmarked against the median DOM of the comps.
+ * Returns null when there is no real basis — never invent a number.
+ */
+export function computeMarketHeat(brief: ListingBrief): number | null {
+  if (brief.comps.length === 0) return null;
+  // Without per-comp DOM we can't benchmark; honest answer: not computable yet.
+  return null;
 }

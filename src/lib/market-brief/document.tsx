@@ -239,10 +239,12 @@ const styles = StyleSheet.create({
 interface BriefDocumentProps {
   brief: ListingBrief;
   generatedAt: Date;
+  /** Renders the fictional SAMPLE banner — never set on real briefs. */
+  sample?: boolean;
 }
 
-export function BriefDocument({ brief, generatedAt }: BriefDocumentProps) {
-  const heatPct = Math.max(0, Math.min(100, brief.marketHeat));
+export function BriefDocument({ brief, generatedAt, sample = false }: BriefDocumentProps) {
+  const heatPct = Math.max(0, Math.min(100, brief.marketHeat ?? 0));
   return (
     <Document>
       <Page size="A4" style={styles.page}>
@@ -269,6 +271,21 @@ export function BriefDocument({ brief, generatedAt }: BriefDocumentProps) {
 
         {/* Body */}
         <View style={styles.body}>
+          {sample && (
+            <View
+              style={{
+                backgroundColor: '#fef3c7',
+                borderRadius: 4,
+                paddingVertical: 6,
+                paddingHorizontal: 10,
+                marginBottom: 12,
+              }}
+            >
+              <Text style={{ fontSize: 8, fontWeight: 'bold', color: '#92400e', letterSpacing: 1 }}>
+                SAMPLE REPORT — ALL DATA ON THIS PAGE IS FICTIONAL · FOR ILLUSTRATION ONLY
+              </Text>
+            </View>
+          )}
           <Text style={styles.address}>{brief.address}</Text>
           <Text style={styles.cityLine}>
             {brief.city} · {brief.propertyType} · {brief.status}
@@ -318,17 +335,22 @@ export function BriefDocument({ brief, generatedAt }: BriefDocumentProps) {
             </View>
           </View>
 
-          {/* Market heat */}
-          <Text style={styles.sectionTitle}>Market Heat</Text>
-          <View style={styles.heatTrack}>
-            <View style={[styles.heatFill, { width: `${heatPct}%` }]} />
-          </View>
-          <View style={styles.heatRow}>
-            <Text style={styles.heatLabel}>
-              Composite of days-on-market, list-to-sale ratios and inventory depth
-            </Text>
-            <Text style={styles.heatValue}>{heatPct}/100</Text>
-          </View>
+          {/* Market heat — only when a real, documented value exists.
+              Never fabricated: the section disappears rather than invent one. */}
+          {brief.marketHeat != null && (
+            <View>
+              <Text style={styles.sectionTitle}>Market Heat</Text>
+              <View style={styles.heatTrack}>
+                <View style={[styles.heatFill, { width: `${heatPct}%` }]} />
+              </View>
+              <View style={styles.heatRow}>
+                <Text style={styles.heatLabel}>
+                  Demand indicator derived from real market inputs
+                </Text>
+                <Text style={styles.heatValue}>{heatPct}/100</Text>
+              </View>
+            </View>
+          )}
 
           {/* Price history */}
           {brief.priceHistory.length > 0 && (

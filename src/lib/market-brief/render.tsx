@@ -6,9 +6,14 @@ import { pdf } from '@react-pdf/renderer';
 import { BriefDocument } from '@/lib/market-brief/document';
 import type { ListingBrief } from '@/lib/bridge/client';
 
-export async function renderBriefPdf(brief: ListingBrief): Promise<Buffer> {
+export async function renderBriefPdf(
+  brief: ListingBrief,
+  opts: { sample?: boolean } = {}
+): Promise<Buffer> {
   const render = async (b: ListingBrief) => {
-    const blob = await pdf(<BriefDocument brief={b} generatedAt={new Date()} />).toBlob();
+    const blob = await pdf(
+      <BriefDocument brief={b} generatedAt={new Date()} sample={opts.sample ?? false} />
+    ).toBlob();
     return Buffer.from(await blob.arrayBuffer());
   };
 
