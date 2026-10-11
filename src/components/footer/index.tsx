@@ -124,7 +124,7 @@ export const Footer = () => {
           </form>
           {signupState === 'success' && (
             <p className="text-emerald-400 text-sm mt-3">
-              You&apos;re on the list — welcome to the agency.
+              You&apos;re on the list — welcome to The Spy Agency.
             </p>
           )}
           {signupState === 'error' && (
