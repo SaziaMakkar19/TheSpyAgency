@@ -38,7 +38,7 @@ yarn-error.log*
 
 # local-only tooling (supabase CLI binary downloaded for `functions serve`)
 supabase.exe
-supabase
+/supabase
 
 # typescript
 *.tsbuildinfo
