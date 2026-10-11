@@ -16,8 +16,7 @@ const SCAN_LINES = [
 const TRUST_POINTS = [
   '350,000+ GVR VOW records scanned live',
   'One page: facts, comps, market signal',
-  'Emailed in seconds — no forms for agents',
-  'Buyer inquiries routed to the listing agent',
+  'Emailed in seconds',
 ];
 
 export function LeadMagnet() {
@@ -189,7 +188,7 @@ export function LeadMagnet() {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="MLS number (e.g. R3009847) or property address"
+                  placeholder="MLS# or property address"
                   disabled={phase === 'scanning'}
                   className="flex-1 px-4 py-3.5 rounded-xl bg-slate-50 border border-slate-200 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500/30 transition-all disabled:opacity-60"
                 />
