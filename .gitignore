@@ -43,3 +43,6 @@ supabase.exe
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local debug captures (untracked scratch)
+.debug-tmp/
