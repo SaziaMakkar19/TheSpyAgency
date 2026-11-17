@@ -30,6 +30,14 @@ export interface ParticipantLayerInput {
   headline: string;
   /** Call to action rendered as a pill button. */
   cta?: string | null;
+  /**
+   * Vertical placement of the copy block, 0–1 fraction of canvas height
+   * (block top edge). Default 0.33. CLAMPED to the clear middle band so the
+   * participant can slide it (e.g. lower, to reveal a feature like a front
+   * door) but never over the header zone, the agent card, or the locked
+   * credit strip. The Studio's drag canvas writes this value.
+   */
+  copyBlockOffset?: number | null;
 }
 
 function initialsOf(name: string): string {
@@ -61,6 +69,13 @@ export async function renderParticipantOverlay(
 
   const contact = [brand.phone, brand.email].filter(Boolean).join("  ·  ");
 
+  // Clamp the copy block into the clear middle band: below the header scrim,
+  // above the agent card + locked credit strip.
+  const minOffset = (250 * s) / h;               // below header zone
+  const maxOffset = 1 - (bar + 24 * s + 150 * s + 340 * s) / h; // above agent card
+  const requested = input.copyBlockOffset ?? 0.33;
+  const copyTop = h * Math.min(Math.max(requested, minOffset), Math.max(maxOffset, minOffset));
+
   const markup = (
     <div
       style={{
@@ -78,7 +93,7 @@ export async function renderParticipantOverlay(
           position: "absolute",
           left: 36 * s,
           right: 36 * s,
-          top: h * 0.33,
+          top: copyTop,
           display: "flex",
           flexDirection: "column",
           gap: 16 * s,

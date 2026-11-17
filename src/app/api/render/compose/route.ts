@@ -11,6 +11,7 @@
  *     headshotUrl?: string, logoUrl?: string, accentColor?: string
  *   },
  *   hook?: string, headline: string, cta?: string,
+ *   copyBlockOffset?: number,      // 0-1 vertical placement, clamped to safe band
  *   persist?: boolean                 // default true
  * }
  * Reply: { path, publicUrl, width, height, templateId, demo, bytes }
@@ -68,6 +69,7 @@ async function renderComposed(opts: {
   hook?: string | null;
   headline: string;
   cta?: string | null;
+  copyBlockOffset?: number | null;
 }) {
   const brief: ListingBrief =
     opts.mlsNo.toLowerCase() === "sample"
@@ -97,7 +99,13 @@ async function renderComposed(opts: {
   );
 
   const overlay = await renderParticipantOverlay(
-    { brand: opts.brand, hook: opts.hook, headline: opts.headline, cta: opts.cta },
+    {
+      brand: opts.brand,
+      hook: opts.hook,
+      headline: opts.headline,
+      cta: opts.cta,
+      copyBlockOffset: opts.copyBlockOffset,
+    },
     opts.templateId,
   );
 
@@ -139,6 +147,8 @@ export async function POST(req: NextRequest) {
       hook: body.hook,
       headline,
       cta: body.cta,
+      copyBlockOffset:
+        typeof body.copyBlockOffset === "number" ? body.copyBlockOffset : null,
     });
     const stored =
       body.persist === false ? { path: null, publicUrl: null } : await persist(brief.mlsNo, rendered.webp);
@@ -169,6 +179,7 @@ export async function GET(req: NextRequest) {
   const headline = (sp.get("headline") || "Your Friday-evening showing awaits").trim();
   const hook = sp.get("hook") ?? "Just listed";
   const cta = sp.get("cta") ?? "Book a private tour";
+  const copyBlockOffset = sp.get("y") ? Number(sp.get("y")) : null;
   const templateId = sp.get("template") || DEFAULT_TEMPLATE_ID;
 
   // Test helper always renders with an explicit sample participant —
@@ -191,6 +202,7 @@ export async function GET(req: NextRequest) {
       hook,
       headline,
       cta,
+      copyBlockOffset,
     });
 
     if (sp.get("raw") === "1") {
