@@ -48,8 +48,15 @@ async function renderForListing(mlsNo: string, templateId?: string) {
     {
       photoUrl: brief.photoUrl,
       mlsNo: brief.mlsNo,
-      agentName: brief.agentName,
+      agentName: brief.agentName || null,
       brokerage: brief.brokerage,
+      address: brief.address,
+      city: brief.city,
+      price: brief.price,
+      beds: brief.beds,
+      baths: brief.baths,
+      interiorSqft: brief.interiorSqft,
+      status: brief.status,
     },
     templateId,
   );
