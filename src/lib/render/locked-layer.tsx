@@ -47,14 +47,19 @@ export interface LockedLayerInput {
 }
 
 export interface LockedLayerResult {
+  /** Lossy delivery format — for storage/display. */
   webp: Buffer;
+  /** Lossless intermediate — used as the composite base so credits survive
+   *  flattening without a double lossy encode. */
+  png: Buffer;
   width: number;
   height: number;
   templateId: string;
 }
 
-/** Fetch a remote photo and hand satori a base64 data URI (it does not fetch). */
-async function fetchAsDataUri(url: string): Promise<string> {
+/** Fetch a remote photo and hand satori a base64 data URI (it does not fetch).
+ *  Shared with the participant-layer renderer for headshots/logos. */
+export async function fetchAsDataUri(url: string): Promise<string> {
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`Photo fetch failed (${res.status}): ${url}`);
   const type = res.headers.get("content-type")?.split(";")[0] || "image/jpeg";
@@ -365,5 +370,5 @@ export async function renderLockedLayer(
     .asPng();
   const webp = await sharp(png).webp({ quality: 88 }).toBuffer();
 
-  return { webp, width: w, height: h, templateId: tpl.id };
+  return { webp, png, width: w, height: h, templateId: tpl.id };
 }
