@@ -22,8 +22,9 @@ export interface LockedLayerInput {
   photoUrl: string;
   /** MLS® number, e.g. 'R3173189'. */
   mlsNo: string;
-  /** Listing agent display name (directory-verified). */
-  agentName: string;
+  /** Listing agent display name — null on terminated/expired listings, where
+   *  Bridge nulls the ListAgent* fields; brokerage becomes the primary line. */
+  agentName: string | null;
   /** Listing brokerage/office name, when known. */
   brokerage: string | null;
 }
@@ -44,17 +45,6 @@ async function fetchAsDataUri(url: string): Promise<string> {
   return `data:${type};base64,${buf.toString("base64")}`;
 }
 
-function EqualHousingMark({ size, color }: { size: number; color: string }) {
-  // Simplified equal-housing house mark (roof + body with '=' cutout).
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <path d="M12 3 2 11h3v9h14v-9h3L12 3z" fill={color} />
-      <rect x="9" y="13" width="6" height="1.6" fill="#05060c" />
-      <rect x="9" y="15.7" width="6" height="1.6" fill="#05060c" />
-    </svg>
-  );
-}
-
 export async function renderLockedLayer(
   input: LockedLayerInput,
   templateId?: string,
@@ -70,6 +60,11 @@ export async function renderLockedLayer(
   const brokerageLine = input.brokerage
     ? `${input.brokerage} · MLS® #${input.mlsNo}`
     : `MLS® #${input.mlsNo}`;
+  // Primary line: the agent when known, otherwise the brokerage alone.
+  const primaryLine = input.agentName
+    ? `Listed by ${input.agentName}`
+    : (input.brokerage ?? "");
+  const secondaryLine = input.agentName ? brokerageLine : `MLS® #${input.mlsNo}`;
 
   const markup = (
     <div
@@ -132,7 +127,8 @@ export async function renderLockedLayer(
         </span>
       </div>
 
-      {/* Credit strip — the locked zone. */}
+      {/* Credit strip — the locked zone. Canadian compliance: listing agent,
+          brokerage, MLS® number. (No Equal Housing mark — US-only requirement.) */}
       <div
         style={{
           position: "absolute",
@@ -142,7 +138,6 @@ export async function renderLockedLayer(
           height: bar,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
           paddingLeft: 36 * s,
           paddingRight: 36 * s,
         }}
@@ -156,7 +151,7 @@ export async function renderLockedLayer(
               color: "#ffffff",
             }}
           >
-            Listed by {input.agentName}
+            {primaryLine}
           </span>
           <span
             style={{
@@ -167,21 +162,7 @@ export async function renderLockedLayer(
               marginTop: 2,
             }}
           >
-            {brokerageLine}
-          </span>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 12 * s }}>
-          <EqualHousingMark size={40 * s} color="#ffffff" />
-          <span
-            style={{
-              fontFamily: "Inter",
-              fontWeight: 600,
-              fontSize: 18 * s,
-              color: "rgba(255,255,255,0.78)",
-            }}
-          >
-            Equal Housing Opportunity
+            {secondaryLine}
           </span>
         </div>
       </div>

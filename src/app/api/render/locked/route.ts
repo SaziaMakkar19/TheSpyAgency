@@ -38,7 +38,11 @@ async function resolveListing(mlsNo: string): Promise<{ brief: ListingBrief; dem
 async function renderForListing(mlsNo: string, templateId?: string) {
   const { brief, demo } = await resolveListing(mlsNo);
   if (!brief.photoUrl) throw new Error(`Listing ${brief.mlsNo} has no photo to render.`);
-  if (!brief.agentName) throw new Error(`Listing ${brief.mlsNo} has no agent name — credits are mandatory.`);
+  // Terminated/expired listings come back from Bridge with the ListAgent*
+  // fields nulled — the brokerage (Office) survives. Office credits are the
+  // mandatory part; render brokerage-only when the agent is unavailable.
+  if (!brief.agentName && !brief.brokerage)
+    throw new Error(`Listing ${brief.mlsNo} has no agent or brokerage — credits are mandatory.`);
 
   const rendered = await renderLockedLayer(
     {
