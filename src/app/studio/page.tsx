@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
-import { AIRemixStudio } from "@/components/studio/AIRemixStudio";
+import { StudioModeSwitch } from "@/components/studio/StudioModeSwitch";
 import { getPost } from "@/lib/data/posts";
 
 export const metadata: Metadata = {
@@ -34,14 +34,15 @@ export default async function StudioPage({
             Campaign Remix Studio
           </h1>
           <p className="max-w-2xl text-sm text-lum-text-muted">
-            Remix a gallery dossier into your own post. Edit the agent layer —
-            headline, note, style, blend. The MLS geometry and courtesy
-            attribution layers stay locked and composited at render time.
+            Build a co-op post over the locked compliance layer — real listing
+            data, your copy, your branding — or explore whole-image AI renders
+            in the Remix Lab. Credits and MLS® attribution stay locked either
+            way.
           </p>
         </div>
 
         <Suspense fallback={null}>
-          <AIRemixStudio sourcePost={sourcePost} />
+          <StudioModeSwitch sourcePost={sourcePost} />
         </Suspense>
       </main>
 
