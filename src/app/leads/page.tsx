@@ -2,7 +2,14 @@ import type { Metadata } from "next";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { getCurrentUser, getSupabaseServer } from "@/lib/supabase/server";
-import { listLeads, type Lead } from "@/lib/landing/leads";
+import {
+  listLeads,
+  formatLocal,
+  buildReplyHref,
+  buildForwardHref,
+  type Lead,
+} from "@/lib/landing/leads";
+import { LeadRowActions } from "@/components/leads/lead-row-actions";
 
 export const metadata: Metadata = {
   title: "Leads Inbox — Head Quarters | The Spy Agency",
@@ -11,20 +18,6 @@ export const metadata: Metadata = {
 };
 
 export const dynamic = "force-dynamic";
-
-const DATE_FMT: Intl.DateTimeFormatOptions = {
-  year: "numeric",
-  month: "short",
-  day: "numeric",
-};
-const TIME_FMT: Intl.DateTimeFormatOptions = { hour: "2-digit", minute: "2-digit" };
-
-/** ISO → "Nov 23, 2026 · 2:30 p.m." in the viewer's local timezone. */
-function formatLocal(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  return `${d.toLocaleDateString("en-CA", DATE_FMT)} · ${d.toLocaleTimeString("en-CA", TIME_FMT)}`;
-}
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
@@ -54,11 +47,16 @@ function LeadsTable({ leads }: { leads: Lead[] }) {
           <thead>
             <tr className="text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-lum-text-muted border-b border-lum-border-glass">
               <th className="px-4 py-3">Visitor</th>
-              <th className="px-4 py-3">Email</th>
+              {/* Email/Note/Received hide on mobile so the actions column stays
+                  reachable without horizontal scroll. */}
+              <th className="px-4 py-3 hidden md:table-cell">Email</th>
               <th className="px-4 py-3">Requested</th>
               <th className="px-4 py-3">Listing</th>
-              <th className="px-4 py-3">Note</th>
-              <th className="px-4 py-3">Received</th>
+              <th className="px-4 py-3 hidden md:table-cell">Note</th>
+              <th className="px-4 py-3 hidden md:table-cell">Received</th>
+              <th className="px-2 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-lum-text-muted">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -67,10 +65,10 @@ function LeadsTable({ leads }: { leads: Lead[] }) {
                 key={lead.id}
                 className="border-b border-lum-border-glass/50 last:border-0 hover:bg-lum-surface/40 transition-colors"
               >
-                <td className="px-4 py-3 font-semibold text-lum-text-primary whitespace-nowrap">
+                <td className="px-4 py-3 font-semibold text-lum-text-primary">
                   {lead.visitorName}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">
+                <td className="px-4 py-3 whitespace-nowrap hidden md:table-cell">
                   <a
                     href={`mailto:${lead.visitorEmail}`}
                     className="text-lum-primary-bright hover:underline"
@@ -96,7 +94,7 @@ function LeadsTable({ leads }: { leads: Lead[] }) {
                     <>MLS® #{lead.listingNo}</>
                   )}
                 </td>
-                <td className="px-4 py-3 max-w-[280px]">
+                <td className="px-4 py-3 max-w-[280px] hidden md:table-cell">
                   {lead.note ? (
                     <span
                       className="block line-clamp-2 break-words text-lum-text-muted"
@@ -108,8 +106,15 @@ function LeadsTable({ leads }: { leads: Lead[] }) {
                     <span className="text-lum-text-muted/60">—</span>
                   )}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap text-lum-on-surface-variant">
+                <td className="px-4 py-3 whitespace-nowrap text-lum-on-surface-variant hidden md:table-cell">
                   {formatLocal(lead.receivedAt)}
+                </td>
+                <td className="px-2 py-1">
+                  <LeadRowActions
+                    leadId={lead.id}
+                    replyHref={buildReplyHref(lead)}
+                    forwardHref={buildForwardHref(lead)}
+                  />
                 </td>
               </tr>
             ))}
