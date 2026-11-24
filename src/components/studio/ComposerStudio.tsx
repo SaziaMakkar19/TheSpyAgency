@@ -89,6 +89,8 @@ export function ComposerStudio() {
   const [exporting, setExporting] = useState(false);
   const [exportResult, setExportResult] = useState<ExportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [landingUrl, setLandingUrl] = useState<string | null>(null);
+  const [linking, setLinking] = useState(false);
 
   const previewBoxRef = useRef<HTMLDivElement>(null);
   const [dragging, setDragging] = useState(false);
@@ -187,6 +189,27 @@ export function ComposerStudio() {
     if (dragging) {
       setDragging(false);
       regenerate(); // final render at drop position (server re-clamps)
+    }
+  };
+
+  // ── Landing link ──
+  const createLink = async () => {
+    if (!specs) return;
+    setLinking(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/landing/links", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ listingNo: specs.mlsNo }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Link failed (${res.status})`);
+      setLandingUrl(data.url);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Link creation failed");
+    } finally {
+      setLinking(false);
     }
   };
 
@@ -510,6 +533,57 @@ export function ComposerStudio() {
           <p className="text-[11px] text-lum-text-muted text-center">
             Export flattens over the locked layer server-side and stores to the
             listing&apos;s folder — ready for campaign scheduling.
+          </p>
+        </div>
+
+        {/* Landing link */}
+        <div className="glass-card p-5 space-y-3">
+          <h3 className="font-jakarta text-sm font-bold text-lum-text-primary">
+            Co-Branded Landing Page
+          </h3>
+          <p className="text-[11px] text-lum-text-muted">
+            Every post links to a page carrying <em>your</em> branding. Leads
+            from it are attributed to you — not the listing brokerage.
+          </p>
+          <button
+            onClick={createLink}
+            disabled={!specs || linking}
+            className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-lum-surface/60 border border-lum-border-glass text-sm font-semibold text-lum-text-primary hover:border-lum-primary disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {linking ? "Creating…" : "Create Landing Link"}
+          </button>
+          {landingUrl && (
+            <div className="space-y-2">
+              <p className="text-xs text-lum-tertiary-bright text-center">
+                ✓ Your link is live
+              </p>
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={landingUrl}
+                  onFocus={(e) => e.target.select()}
+                  className="flex-1 rounded-lg bg-lum-surface/60 border border-lum-border-glass px-3 py-2 text-xs text-lum-text-primary"
+                />
+                <button
+                  onClick={() => navigator.clipboard.writeText(landingUrl)}
+                  className="px-3 py-2 rounded-lg lum-gradient-btn text-xs font-semibold"
+                >
+                  Copy
+                </button>
+              </div>
+              <a
+                href={landingUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="block text-center text-xs text-lum-primary-bright underline"
+              >
+                Preview your page
+              </a>
+            </div>
+          )}
+          <p className="text-[11px] text-lum-text-muted text-center">
+            Paste this link into your social posts for now — it will auto-attach
+            when campaign publishing goes live.
           </p>
         </div>
       </div>
