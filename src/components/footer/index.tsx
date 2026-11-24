@@ -96,7 +96,7 @@ export const Footer = () => {
 
           <p className="text-gray-400 text-sm sm:text-base max-w-lg mb-8 leading-relaxed">
             Hop into our Facebook community or follow our socials to trade tips,
-            receive free prompts, and chat with thousands of active agents.
+            receive free prompts, and chat with active agents.
           </p>
 
           {/* Newsletter signup — posts to /api/newsletter (newsletter_subscribers) */}
