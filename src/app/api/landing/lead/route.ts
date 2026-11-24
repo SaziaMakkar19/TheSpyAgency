@@ -3,12 +3,16 @@
  * page. Anonymous visitors; the parent link identifies which participant
  * gets credited (RLS blocks public inserts, so this writes service-role).
  *
+ * After the insert succeeds, the owning agent is emailed via Resend inside
+ * after() — the response never waits on, and never fails because of, email.
+ *
  * Body: { token, name, email, date, time, note?, company? }
  * `company` is a honeypot — bots fill it, humans never see it; we fake
  * success and skip the insert.
  */
-import { type NextRequest } from "next/server";
+import { after, type NextRequest } from "next/server";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
+import { notifyAgentNewLead } from "@/lib/email/lead-notification";
 
 export const runtime = "nodejs";
 
@@ -41,7 +45,7 @@ export async function POST(req: NextRequest) {
   // Resolve the link (validates token + gives us the attributed owner/listing).
   const { data: link, error: linkError } = await supabase
     .from("landing_links")
-    .select("id, listing_no")
+    .select("id, listing_no, user_id")
     .eq("token", token)
     .single();
   if (linkError || !link) return Response.json({ error: "Link not found." }, { status: 404 });
@@ -58,6 +62,19 @@ export async function POST(req: NextRequest) {
     console.error("Lead insert failed:", error);
     return Response.json({ error: "Could not record the request." }, { status: 500 });
   }
+
+  // Email the owning agent (Resend, SMTP stays disarmed). after() runs once
+  // the response is sent; notifyAgentNewLead swallows its own errors.
+  after(() =>
+    notifyAgentNewLead({
+      ownerUserId: link.user_id,
+      listingNo: link.listing_no,
+      visitorName: name,
+      visitorEmail: email,
+      requestedAt,
+      note,
+    })
+  );
 
   return Response.json({ ok: true });
 }
