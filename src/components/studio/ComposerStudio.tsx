@@ -579,6 +579,12 @@ export function ComposerStudio() {
               >
                 Preview your page
               </a>
+              <a
+                href="/leads"
+                className="block text-center text-xs text-lum-primary-bright underline"
+              >
+                View your leads inbox
+              </a>
             </div>
           )}
           <p className="text-[11px] text-lum-text-muted text-center">

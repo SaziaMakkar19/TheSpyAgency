@@ -10,6 +10,7 @@ const defaultNavItems: NavItem[] = [
   { label: 'Special Ops', href: '/studio' },
   { label: 'Co-Ops', href: '/campaigns' },
   { label: 'Q Branch', href: '#' },
+  { label: 'Leads', href: '/leads' },
   { label: 'Head Quarters', href: '/profile' },
   { label: 'Performance', href: '/analytics' },
 ];
