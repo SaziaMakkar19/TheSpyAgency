@@ -10,7 +10,18 @@ export const metadata: Metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default function LoginPage() {
+function sanitizeNext(next: string | undefined): string | undefined {
+  // Same-origin paths only — never let an external URL through as a redirect target.
+  return next && next.startsWith("/") && !next.startsWith("//") ? next : undefined;
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; notice?: string }>;
+}) {
+  const { next, notice } = await searchParams;
+
   return (
     <div className="min-h-screen bg-lum-void text-lum-on-surface font-body">
       <Navbar />
@@ -24,7 +35,13 @@ export default function LoginPage() {
             Sign In / Register
           </h1>
         </div>
-        <LoginForm />
+
+        {notice && (
+          <p className="mb-4 rounded-xl border border-lum-border-glow bg-lum-primary/10 px-4 py-3 text-center text-xs text-lum-primary-bright">
+            {notice}
+          </p>
+        )}
+        <LoginForm next={sanitizeNext(next)} />
       </main>
 
       <Footer />

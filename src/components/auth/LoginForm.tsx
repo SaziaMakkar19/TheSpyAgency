@@ -8,8 +8,10 @@ import { getSupabaseBrowser } from "@/lib/supabase/client";
  * account on first use, so registration and login are the same flow —
  * the trigger auto-creates the profile row, and directory verification
  * runs on the profile page.
+ * `next` is a same-origin path (validated by the login page) that the
+ * auth callback returns the agent to after the magic link is clicked.
  */
-export function LoginForm() {
+export function LoginForm({ next }: { next?: string }) {
   const [email, setEmail] = useState("");
   const [state, setState] = useState<"idle" | "sending" | "sent" | "error">("idle");
   const [message, setMessage] = useState("");
@@ -26,10 +28,14 @@ export function LoginForm() {
       return;
     }
 
+    const callback = next
+      ? `/auth/callback?next=${encodeURIComponent(next)}`
+      : "/auth/callback";
+
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
+        emailRedirectTo: `${window.location.origin}${callback}`,
       },
     });
 

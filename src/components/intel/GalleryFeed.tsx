@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import type { Post } from "@/lib/data/posts";
 import { GALLERY_TAGS } from "@/lib/data/posts";
 import { PostCard } from "./PostCard";
-import { PromptPanel } from "./PromptPanel";
 
 interface GalleryFeedProps {
   posts: Post[];
@@ -55,7 +54,7 @@ export function GalleryFeed({ posts }: GalleryFeedProps) {
           placeholder={
             isPro
               ? "Camera & lens queries, MLS & style parameters…"
-              : "Search titles & tags (Pro unlocks semantic search)"
+              : "Search titles & tags (Pro Users)"
           }
           className="flex-1 bg-transparent text-sm text-lum-text-primary placeholder:text-lum-text-muted/70 focus:outline-none"
         />
@@ -100,16 +99,6 @@ export function GalleryFeed({ posts }: GalleryFeedProps) {
           ))}
         </div>
       )}
-
-      {/* Inline prompt inspector for quick preview */}
-      <PromptPanel
-        prompt={
-          visible[0]?.prompt ??
-          "Architectural twilight shot of a modern hillside villa, glass balustrades, glowing warm interior, hyperrealistic 8K, cinematic wide angle"
-        }
-        model={visible[0]?.aiModel ?? "Prompt Post Engine v4.2"}
-        isProOnly={visible[0]?.isProOnly ?? false}
-      />
     </div>
   );
 }

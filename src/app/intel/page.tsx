@@ -26,12 +26,13 @@ export default async function IntelPage() {
             The Spy Agency / Intel
           </p>
           <h1 className="font-jakarta text-3xl sm:text-4xl font-extrabold tracking-tight text-lum-text-primary">
-            Realtor Intel Ops — Post Gallery
+            Real Estate Post Gallery
           </h1>
           <p className="max-w-2xl text-sm text-lum-text-muted">
-            Every dossier shows the render, the exact prompt recipe, and the AI
-            model behind it. Copy a prompt to learn the craft — or remix it in
-            the Studio to make it yours.
+            Every dossier breaks down the prompt recipe, AI model, and listing
+            assets behind the final render. Registered agents can copy the
+            prompt to master the craft — or open it in the Studio to remix
+            your own.
           </p>
         </div>
 

@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Navbar } from "@/components/navbar";
 import { Footer } from "@/components/footer";
 import { PromptPanel } from "@/components/intel/PromptPanel";
 import { RenderPlaceholder } from "@/components/intel/RenderPlaceholder";
 import { getPost } from "@/lib/data/posts";
+import { getCurrentUser } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,11 @@ export async function generateMetadata({
  * Dossier detail — the Stitch "Dossier Inspector".
  * Render canvas + full prompt recipe (with model/context disclosure) +
  * compliance attribution + remix CTA into the Studio.
+ *
+ * Registration is REQUIRED: anonymous visitors are redirected to /login
+ * with a return URL, so the prompt recipe is never leaked to the public.
+ * When Supabase is not configured the site runs on seed data with no auth
+ * possible — the gate is a no-op there (same degradation as getPosts).
  */
 export default async function DossierPage({
   params,
@@ -32,6 +38,16 @@ export default async function DossierPage({
   const { id } = await params;
   const post = await getPost(id);
   if (!post) notFound();
+
+  const user = await getCurrentUser();
+  if (!user && process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    const next = `/intel/${id}`;
+    redirect(
+      `/login?next=${encodeURIComponent(next)}&notice=${encodeURIComponent(
+        "Sign in to view this dossier."
+      )}`
+    );
+  }
 
   return (
     <div className="min-h-screen bg-lum-void text-lum-on-surface font-body">
@@ -107,7 +123,7 @@ export default async function DossierPage({
 
           {/* Inspector rail */}
           <div className="lg:col-span-2 space-y-5">
-            <PromptPanel prompt={post.prompt} model={post.aiModel} isProOnly={post.isProOnly} />
+            <PromptPanel prompt={post.prompt} model={post.aiModel} />
 
             {/* Stats */}
             <div className="glass-card p-5 grid grid-cols-2 gap-4">
